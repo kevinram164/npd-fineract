@@ -1,9 +1,6 @@
-// Jenkinsfile — nhánh dev-k8s (pattern banking-demo)
-// Shared library: https://github.com/kevinram164/jenkins-shared-library
-// CD: bump tag trong deploy/dev-k8s/values/values-images.yaml → ArgoCD sync.
-//
-// Phase 2: bổ sung Dockerfile/Kaniko context cho fineract-server (Gradle/Jib).
-// Ban đầu có thể deploy image upstream và chỉ dùng Argo (không cần Jenkins).
+// Jenkins Multibranch — nhánh dev-k8s
+// Library: platform@main (catalog project npd-fineract)
+// Flow: Kaniko mirror openmf → Harbor → bump deploy/dev-k8s/values/values-images.yaml → Argo
 
 @Library('platform@main') _
 

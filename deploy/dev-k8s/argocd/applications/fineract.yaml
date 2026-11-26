@@ -7,13 +7,17 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: fineract
-  source:
-    repoURL: https://github.com/kevinram164/npd-fineract.git
-    targetRevision: dev-k8s
-    path: charts/fineract
-    helm:
-      valueFiles:
-        - values-dev-k8s.yaml
+  sources:
+    - repoURL: https://github.com/kevinram164/npd-fineract.git
+      targetRevision: dev-k8s
+      path: charts/fineract
+      helm:
+        valueFiles:
+          - values-dev-k8s.yaml
+          - $values/deploy/dev-k8s/values/values-images.yaml
+    - repoURL: https://github.com/kevinram164/npd-fineract.git
+      targetRevision: dev-k8s
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: npd-fineract

@@ -1,25 +1,17 @@
-# Argo CD (dev-k8s) — Postgres = platform postgres-ha (không deploy DB trong chart).
-# Image: giữ openmf/* đến khi Jenkins mirror vào Harbor (Bước 4).
+# Argo CD (dev-k8s) — Postgres = platform postgres-ha.
+# Image repository/tag: deploy/dev-k8s/values/values-images.yaml (Jenkins bump).
 
 namespace: npd-fineract
 imagePullSecrets:
   - name: harbor-pull-creds
 
 fineract:
-  image:
-    repository: openmf/fineract
-    tag: develop
-    pullPolicy: IfNotPresent
   jdbcUrl: jdbc:postgresql://postgres-ha-postgresql-primary.postgres.svc.cluster.local:5432/fineract_tenants
   tenantDb:
     host: postgres-ha-postgresql-primary.postgres.svc.cluster.local
     port: "5432"
 
 webapp:
-  image:
-    repository: openmf/web-app
-    tag: dev
-    pullPolicy: IfNotPresent
   # UI gọi API qua f5-lb (TLS)
   fineractApiUrl: https://npd-fineract.co
 

@@ -9,8 +9,26 @@ GitOps giống `banking-demo` / `npd-shop`. **Postgres = `postgres-ha` platform*
 | **1** | Harbor project `npd-fineract` + robot | `scripts/harbor-setup-project.sh` |
 | **2** | Vault seed + role `fineract-app` / `fineract-db-init` | `vault-seed-fineract.sh` → `vault-setup-k8s-auth.sh` |
 | **3** | `harbor-pull-creds` | `create-harbor-pull-secret.sh` |
-| **4** | Jenkins / mirror image (tuỳ) | Multibranch + library |
+| **4** | Jenkins CI + Harbor images | Multibranch + mirror Dockerfiles |
 | **5** | Argo: `fineract-db-init` → `fineract-app` | `argocd/*` |
+
+## Bước 4 — Jenkins CI/CD
+
+```bash
+# 0) Library catalog npd-fineract phải có trên origin/main (jenkins-shared-library)
+
+# 1) Mirror lần đầu (tag bootstrap) — máy có docker/crane
+export HARBOR_USER='robot$npd-fineract+ci-push'
+export HARBOR_PASS='...'
+bash scripts/mirror-images-to-harbor.sh
+
+# 2) Jenkins → New Item → Multibranch Pipeline "npd-fineract"
+#    Branch: GitHub kevinram164/npd-fineract, discover dev-k8s
+#    Script Path: Jenkinsfile
+#    Build with Parameters: BUILD_TARGET=fineract-server,web-app  (lần đầu)
+```
+
+Pipeline: Kaniko → Harbor → bump `values-images.yaml` → Argo sync Harbor tags.
 
 ## Bước 1–3
 
