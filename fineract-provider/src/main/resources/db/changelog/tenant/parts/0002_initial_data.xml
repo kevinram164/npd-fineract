@@ -508,7 +508,7 @@
         <insert tableName="c_external_service_properties">
             <column name="name" value="server_key"/>
             <column name="value"
-                    value="AAAAToBmqQQ:APA91bEodkE12CwFl8VHqanUbeJYg1E05TiheVz59CZZYrBnCq3uM40UYhHfdP-JfeTQ0L0zoLqS8orjvW_ze0_VF8DSuyyqkrDibflhtUainsI0lwgVz5u1YP3q3c3erqjlySEuRShS"/>
+                    value="REPLACE_ME_FCM_SERVER_KEY_NOT_FOR_PROD"/>
             <column name="external_service_id" valueNumeric="4"/>
         </insert>
         <insert tableName="c_external_service_properties">
