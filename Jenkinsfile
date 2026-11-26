@@ -18,6 +18,6 @@ platformPipeline([
   kanikoUseCache       : false,
   vaultAddr            : 'http://vault.vault.svc.cluster.local:8200',
   vaultRole            : 'jenkins-kaniko',
-  vaultHarborPath      : 'platform/harbor',
+  vaultHarborPath      : 'fineract/harbor',
   vaultGithubPath      : 'platform/github',
 ])

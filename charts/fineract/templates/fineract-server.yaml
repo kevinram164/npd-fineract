@@ -28,6 +28,7 @@ spec:
         vault.hashicorp.com/agent-pre-populate-only: "true"
       {{- end }}
     spec:
+      serviceAccountName: fineract-server
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

@@ -69,7 +69,7 @@ postgres:
 
 ingress:
   enabled: true
-  className: nginx
+  className: haproxy
   hosts:
     fineract: fineract.npd.co
     webapp: mifos.npd.co

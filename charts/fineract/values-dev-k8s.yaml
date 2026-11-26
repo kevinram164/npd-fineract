@@ -1,8 +1,9 @@
-# Argo CD (dev-k8s) — Phase 1 bootstrap với image upstream
-# Phase 2: đổi fineract.image sang npd-harbor.co/npd-fineract/... sau Jenkins
+# Argo CD (dev-k8s) — sau Bước 1–3 (Harbor + Vault + pull-secret)
+# Image: giữ openmf/* đến khi Jenkins mirror vào Harbor (Bước 4), rồi đổi repository.
 
 namespace: npd-fineract
-imagePullSecrets: []
+imagePullSecrets:
+  - name: harbor-pull-creds
 
 fineract:
   image:
@@ -26,7 +27,7 @@ postgres:
 
 ingress:
   enabled: true
-  className: nginx
+  className: haproxy
   hosts:
     fineract: fineract.npd.co
     webapp: mifos.npd.co

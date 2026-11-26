@@ -1,10 +1,10 @@
-# Phase 2 — Jenkins bump tags (mirror vào charts/fineract/values-dev-k8s.yaml khi CI sẵn)
-# Phase 1 đang dùng openmf/* trong charts/fineract/values-dev-k8s.yaml
+# Jenkins bump tag sau khi image nằm trên Harbor (Bước 4).
+# Hiện chart values-dev-k8s vẫn openmf/* cho đến khi mirror xong.
 fineract:
   image:
-    repository: openmf/fineract
-    tag: develop
+    repository: npd-harbor.co/npd-fineract/fineract-server
+    tag: "pending"
 webapp:
   image:
-    repository: openmf/web-app
-    tag: dev
+    repository: npd-harbor.co/npd-fineract/web-app
+    tag: "pending"
