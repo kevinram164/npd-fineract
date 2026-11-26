@@ -1,4 +1,23 @@
-# Apache Fineract
+# NPD Fineract
+
+Fork nội bộ từ [Apache Fineract](https://github.com/apache/fineract) (Apache-2.0) để triển khai trên lab **npd-k8s** theo mô hình GitOps giống `banking-demo` (Helm, Argo CD, Jenkins, Vault, Instana, Grafana).
+
+## Kiến trúc tổng quan (NPD)
+
+![NPD Fineract architecture — GitHub → Jenkins/Harbor → Argo CD → ns npd-fineract (Web UI, Fineract API, Postgres) → OTel/Instana/Grafana/Vault](docs/images/npd-fineract-architecture.jpg)
+
+| Lớp | Thành phần |
+|-----|------------|
+| **CI/CD** | GitHub `npd-fineract` → Jenkins (`platformPipeline`) → Harbor → Argo CD |
+| **Runtime** | Namespace `npd-fineract`: Mifos Web UI, Fineract Server (REST), PostgreSQL |
+| **Nghiệp vụ** | Client/KYC, savings & loans, ledger, COB, maker-checker (core banking) |
+| **Platform dùng chung** | Vault, OTel Collector, Instana agent, Prometheus/Grafana, Harbor, Argo |
+
+Chi tiết triển khai: [`DEPLOY-PLAN.md`](DEPLOY-PLAN.md) · GitOps lab: [`deploy/dev-k8s/README.md`](deploy/dev-k8s/README.md) · Logs/APM Instana: xem `cloud-native-platform` → `phase9-gitops-platform/instana/LOGS-TO-INSTANA.md`.
+
+---
+
+# Apache Fineract (upstream)
 
 <!-- TODO Reactivate when there is a working CI-CD instance: [![Swagger Validation](https://validator.swagger.io/validator?url=https://sandbox.mifos.community/fineract-provider/swagger-ui/fineract.yaml)](https://validator.swagger.io/validator/debug?url=https://sandbox.mifos.community/fineract-provider/swagger-ui/fineract.yaml) -->
 [![Build](https://github.com/apache/fineract/actions/workflows/build-postgresql.yml/badge.svg?branch=develop)](https://github.com/apache/fineract/actions/workflows/build-postgresql.yml)
