@@ -4,11 +4,11 @@
 fineract:
   image:
     repository: npd-harbor.co/npd-fineract/fineract-server
-    tag: "bootstrap"
+    tag: "3726ff3"
     pullPolicy: Always
 
 webapp:
   image:
     repository: npd-harbor.co/npd-fineract/web-app
-    tag: "bootstrap"
+    tag: "3726ff3"
     pullPolicy: Always
