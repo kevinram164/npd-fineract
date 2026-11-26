@@ -22,8 +22,7 @@ postgres:
   persistence:
     enabled: true
     size: 10Gi
-    # Để trống = default StorageClass của cluster
-    storageClass: ""
+    storageClass: nfs-csi
 
 ingress:
   enabled: true
