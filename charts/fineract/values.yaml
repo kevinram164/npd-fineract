@@ -44,8 +44,8 @@ webapp:
     repository: openmf/web-app
     tag: dev
     pullPolicy: IfNotPresent
-  # Phải khớp ingress host fineract (http lab)
-  fineractApiUrl: http://fineract.npd.co
+  # Phải khớp ingress host API (f5-lb TLS)
+  fineractApiUrl: https://npd-fineract.co
   service:
     port: 80
   resources:
@@ -76,8 +76,8 @@ ingress:
   enabled: true
   className: haproxy
   hosts:
-    fineract: fineract.npd.co
-    webapp: mifos.npd.co
+    fineract: npd-fineract.co
+    webapp: npd-mifos.co
   tls: []
 
 observability:

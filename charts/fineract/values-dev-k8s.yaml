@@ -20,7 +20,8 @@ webapp:
     repository: openmf/web-app
     tag: dev
     pullPolicy: IfNotPresent
-  fineractApiUrl: http://fineract.npd.co
+  # UI gọi API qua f5-lb (TLS)
+  fineractApiUrl: https://npd-fineract.co
 
 # Tắt Postgres embed — dùng postgres-ha + Job fineract-db-init
 postgres:
@@ -30,8 +31,8 @@ ingress:
   enabled: true
   className: haproxy
   hosts:
-    fineract: fineract.npd.co
-    webapp: mifos.npd.co
+    fineract: npd-fineract.co
+    webapp: npd-mifos.co
 
 vault:
   enabled: false

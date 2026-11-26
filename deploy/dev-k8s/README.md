@@ -41,4 +41,18 @@ kubectl apply -f deploy/dev-k8s/argocd/appproject.yaml
 kubectl apply -f deploy/dev-k8s/argocd/app-of-apps.yaml
 ```
 
-Hosts: `10.100.1.100  fineract.npd.co mifos.npd.co` — login UI lab `mifos` / `password`.
+Hosts client: `10.100.1.100  npd-fineract.co npd-mifos.co`  
+UI: https://npd-mifos.co — login lab `mifos` / `password`  
+API: https://npd-fineract.co/fineract-provider/...
+
+### f5-lb (NGINX Plus)
+
+```bash
+# Từ máy có repo cloud-native-platform
+scp phase9-gitops-platform/environments/dev-k8s/f5-lb/conf.d/63-npd-fineract.conf \
+    phase9-gitops-platform/environments/dev-k8s/f5-lb/conf.d/64-npd-mifos.conf \
+    sysadmin@10.100.1.100:/tmp/
+ssh sysadmin@10.100.1.100 'sudo cp /tmp/63-npd-fineract.conf /tmp/64-npd-mifos.conf /etc/nginx/conf.d/ && sudo nginx -t && sudo nginx -s reload'
+```
+
+Cert `/etc/nginx/certs/tls.crt` cần SAN (hoặc wildcard `*.npd.co` / `npd-*.co`) gồm `npd-fineract.co` + `npd-mifos.co`.
