@@ -1,8 +1,9 @@
-# Jenkins bump tags tại đây (giống banking-demo)
+# Phase 2 — Jenkins bump tags (mirror vào charts/fineract/values-dev-k8s.yaml khi CI sẵn)
+# Phase 1 đang dùng openmf/* trong charts/fineract/values-dev-k8s.yaml
 fineract:
   image:
-    repository: npd-harbor.co/npd-fineract/fineract-server
-    tag: bootstrap
+    repository: openmf/fineract
+    tag: develop
 webapp:
   image:
     repository: openmf/web-app

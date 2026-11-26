@@ -1,22 +1,23 @@
-# Default values — override bằng deploy/dev-k8s/values/*.yaml
+# Defaults — override bằng values-dev-k8s.yaml (Argo)
 
 namespace: npd-fineract
 
-imagePullSecrets:
-  - name: harbor-pull-creds
+# Bootstrap: Docker Hub images → để trống. Sau này Harbor → thêm harbor-pull-creds
+imagePullSecrets: []
 
 fineract:
   enabled: true
   replicaCount: 1
   image:
-    repository: npd-harbor.co/npd-fineract/fineract-server
-    tag: bootstrap
+    repository: openmf/fineract
+    tag: develop
     pullPolicy: IfNotPresent
-  # Lab bootstrap: có thể trỏ image upstream trước khi Jenkins build
-  # repository: apache/fineract
-  # tag: latest
   service:
     port: 8080
+  jdbcUrl: jdbc:postgresql://fineractdb:5432/fineract_tenants
+  tenantDb:
+    host: fineractdb
+    port: "5432"
   resources:
     requests:
       cpu: 200m
@@ -30,7 +31,6 @@ fineract:
     FINERACT_SERVER_PORT: "8080"
     FINERACT_HIKARI_DRIVER_SOURCE_CLASS_NAME: org.postgresql.Driver
     JAVA_TOOL_OPTIONS: "-Xmx1G -XX:MaxMetaspaceSize=256m"
-  # DB URL/user/pass: Vault inject (values-vault) hoặc secretName
   existingSecret: fineract-tenants-db-secret
 
 webapp:
@@ -40,6 +40,8 @@ webapp:
     repository: openmf/web-app
     tag: dev
     pullPolicy: IfNotPresent
+  # Phải khớp ingress host fineract (http lab)
+  fineractApiUrl: http://fineract.npd.co
   service:
     port: 80
   resources:
@@ -51,13 +53,12 @@ webapp:
       memory: 1Gi
 
 postgres:
-  # Lab only — production: external Postgres + Vault
   enabled: true
   image: postgres:17.5
   persistence:
     enabled: true
     size: 10Gi
-    storageClass: ""   # set cluster default / longhorn / local-path
+    storageClass: ""
   resources:
     requests:
       cpu: 500m
@@ -77,8 +78,9 @@ ingress:
 observability:
   otelEndpoint: "http://opentelemetry-collector.observability.svc.cluster.local:4317"
   otelServiceName: fineract-server
-  # Phase 4: gắn OTel Java agent / Instana agent qua extraEnv hoặc initContainer
-  extraEnv: {}
+  extraEnv:
+    OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+    OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=dev-k8s,k8s.namespace.name=npd-fineract,k8s.cluster.name=npd-k8s"
 
 vault:
   enabled: false

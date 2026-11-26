@@ -1,0 +1,35 @@
+# Argo CD (dev-k8s) — Phase 1 bootstrap với image upstream
+# Phase 2: đổi fineract.image sang npd-harbor.co/npd-fineract/... sau Jenkins
+
+namespace: npd-fineract
+imagePullSecrets: []
+
+fineract:
+  image:
+    repository: openmf/fineract
+    tag: develop
+    pullPolicy: IfNotPresent
+
+webapp:
+  image:
+    repository: openmf/web-app
+    tag: dev
+    pullPolicy: IfNotPresent
+  fineractApiUrl: http://fineract.npd.co
+
+postgres:
+  persistence:
+    enabled: true
+    size: 10Gi
+    # Để trống = default StorageClass của cluster
+    storageClass: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    fineract: fineract.npd.co
+    webapp: mifos.npd.co
+
+vault:
+  enabled: false

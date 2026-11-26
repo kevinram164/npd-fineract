@@ -13,9 +13,7 @@ spec:
     path: charts/fineract
     helm:
       valueFiles:
-        - ../../deploy/dev-k8s/values/values-images.yaml
-        - ../../deploy/dev-k8s/values/values-observability.yaml
-        - ../../deploy/dev-k8s/values/values-vault.yaml
+        - values-dev-k8s.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: npd-fineract

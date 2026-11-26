@@ -1,0 +1,19 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fineractdb-initdb
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: fineract-server
+data:
+  01-init.sh: |
+    #!/bin/bash
+    set -e
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<-EOSQL
+      SELECT 'CREATE DATABASE fineract_tenants' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'fineract_tenants')\gexec
+      SELECT 'CREATE DATABASE fineract_default' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'fineract_default')\gexec
+      GRANT ALL PRIVILEGES ON DATABASE fineract_tenants TO "$POSTGRES_USER";
+      GRANT ALL PRIVILEGES ON DATABASE fineract_default TO "$POSTGRES_USER";
+    EOSQL
+{{- end }}
