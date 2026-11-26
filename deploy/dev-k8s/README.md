@@ -16,16 +16,14 @@ GitOps giống `banking-demo` / `npd-shop`. **Postgres = `postgres-ha` platform*
 
 | Service | Khi sửa gì thì build | Cách build |
 |---------|----------------------|------------|
-| `fineract-server` | `fineract-provider/`, `fineract-core/`, loan/savings/… | Gradle `bootJar` trong Dockerfile (15–45 phút, agent 8Gi) |
-| `web-app` | `docker/web-app/` | Mirror `openmf/web-app` (UI không nằm trong repo Fineract) |
+| `fineract-server` | `fineract-provider/`, `fineract-core/`, … | Gradle + **DinD** (QueryDSL Testcontainers) → Kaniko đóng JAR (20–60 phút) |
+| `web-app` | `docker/web-app/` | Kaniko mirror `openmf/web-app` |
+
+**Lưu ý:** Không build Gradle *trong* Kaniko. Pod CI dùng sidecar `docker:27-dind` (privileged). Cluster phải cho phép privileged containers.
 
 ```bash
-# Jenkins Multibranch → branch dev-k8s
-# Force build source lần đầu sau khi đổi Dockerfile:
-#   BUILD_TARGET=fineract-server
-#
-# Sửa Java → push dev-k8s → auto detect (watchPath + sharedTriggers) → build
-# Expect: stage Build chậm hơn mirror; log có ./gradlew :fineract-provider:bootJar
+# Force: BUILD_TARGET=fineract-server
+# Log OK: "DinD ready" → bootJar → Kaniko push
 ```
 
 ## Bước 1–3

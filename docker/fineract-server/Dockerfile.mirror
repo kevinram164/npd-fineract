@@ -1,0 +1,3 @@
+# Fallback CD nhanh (không build source) — mirror upstream.
+ARG UPSTREAM=openmf/fineract:develop
+FROM ${UPSTREAM}
