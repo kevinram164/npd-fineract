@@ -1,5 +1,5 @@
-# Argo CD (dev-k8s) — sau Bước 1–3 (Harbor + Vault + pull-secret)
-# Image: giữ openmf/* đến khi Jenkins mirror vào Harbor (Bước 4), rồi đổi repository.
+# Argo CD (dev-k8s) — Postgres = platform postgres-ha (không deploy DB trong chart).
+# Image: giữ openmf/* đến khi Jenkins mirror vào Harbor (Bước 4).
 
 namespace: npd-fineract
 imagePullSecrets:
@@ -10,6 +10,10 @@ fineract:
     repository: openmf/fineract
     tag: develop
     pullPolicy: IfNotPresent
+  jdbcUrl: jdbc:postgresql://postgres-ha-postgresql-primary.postgres.svc.cluster.local:5432/fineract_tenants
+  tenantDb:
+    host: postgres-ha-postgresql-primary.postgres.svc.cluster.local
+    port: "5432"
 
 webapp:
   image:
@@ -18,11 +22,9 @@ webapp:
     pullPolicy: IfNotPresent
   fineractApiUrl: http://fineract.npd.co
 
+# Tắt Postgres embed — dùng postgres-ha + Job fineract-db-init
 postgres:
-  persistence:
-    enabled: true
-    size: 10Gi
-    storageClass: nfs-csi
+  enabled: false
 
 ingress:
   enabled: true

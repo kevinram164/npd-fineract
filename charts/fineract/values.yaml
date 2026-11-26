@@ -14,9 +14,9 @@ fineract:
     pullPolicy: IfNotPresent
   service:
     port: 8080
-  jdbcUrl: jdbc:postgresql://fineractdb:5432/fineract_tenants
+  jdbcUrl: jdbc:postgresql://postgres-ha-postgresql-primary.postgres.svc.cluster.local:5432/fineract_tenants
   tenantDb:
-    host: fineractdb
+    host: postgres-ha-postgresql-primary.postgres.svc.cluster.local
     port: "5432"
   resources:
     requests:
@@ -52,8 +52,9 @@ webapp:
       cpu: "500m"
       memory: 1Gi
 
+# Mặc định tắt — dùng postgres-ha platform. Bật chỉ khi lab offline không có HA.
 postgres:
-  enabled: true
+  enabled: false
   image: postgres:17.5
   persistence:
     enabled: true

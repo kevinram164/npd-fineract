@@ -9,12 +9,6 @@
 #   export HARBOR_PUSH_TOKEN='...'
 #   export REGISTRY=npd-harbor.co
 #   bash scripts/vault-seed-fineract.sh
-#
-# Từ máy có kubectl:
-#   kubectl exec -i -n vault vault-0 -- env \
-#     VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=$VAULT_TOKEN \
-#     HARBOR_PULL_TOKEN=... HARBOR_PUSH_TOKEN=... REGISTRY=npd-harbor.co \
-#     bash -s < scripts/vault-seed-fineract.sh
 set -euo pipefail
 
 : "${VAULT_ADDR:?set VAULT_ADDR}"
@@ -23,16 +17,17 @@ set -euo pipefail
 : "${HARBOR_PUSH_TOKEN:?set HARBOR_PUSH_TOKEN (robot npd-fineract+ci-push)}"
 
 REGISTRY="${REGISTRY:-npd-harbor.co}"
-# Lab: Postgres trong ns npd-fineract (Service fineractdb). Phase sau có thể trỏ shared PG.
-PG_HOST="${PG_HOST:-fineractdb.npd-fineract.svc.cluster.local}"
-DB_USER="${DB_USER:-postgres}"
+# Shared platform Postgres (giống banking / noli / movie) — chỉ user/DB riêng.
+PG_HOST="${PG_HOST:-postgres-ha-postgresql-primary.postgres.svc.cluster.local}"
+DB_USER="${DB_USER:-fineract}"
 DB_PASSWORD="${FINERACT_DB_PASSWORD:-$(openssl rand -base64 18 | tr -d '/+=' | head -c 20)}"
 JDBC_URL="${JDBC_URL:-jdbc:postgresql://${PG_HOST}:5432/fineract_tenants}"
 
-echo "==> secret/fineract/db"
+echo "==> secret/fineract/db (user fineract trên postgres-ha)"
 vault kv put secret/fineract/db \
   username="${DB_USER}" \
   password="${DB_PASSWORD}" \
+  database=fineract_tenants \
   jdbc-url="${JDBC_URL}" \
   FINERACT_HIKARI_USERNAME="${DB_USER}" \
   FINERACT_HIKARI_PASSWORD="${DB_PASSWORD}" \
@@ -56,10 +51,8 @@ echo "  vault kv get secret/fineract/db"
 echo "  vault kv get secret/fineract/harbor-pull"
 echo "  vault kv get secret/fineract/harbor"
 echo
-echo "Tiếp:"
-echo "  1) bash cloud-native-platform/.../vault-setup-k8s-auth.sh   # role fineract-app"
-echo "  2) VAULT_PATH=secret/fineract/harbor-pull NAMESPACES=npd-fineract \\"
-echo "       bash .../create-harbor-pull-secret.sh"
+echo "Tiếp: vault-setup-k8s-auth.sh (roles fineract-app + fineract-db-init)"
+echo "      rồi create-harbor-pull-secret + Argo (fineract-db-init → fineract-app)"
 if [[ "${DEBUG:-0}" == "1" ]]; then
   echo "  DB password=${DB_PASSWORD}"
 fi

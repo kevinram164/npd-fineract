@@ -49,11 +49,12 @@ fi
 echo "==> Namespace $NS"
 kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
 
-echo "==> Secret fineract-tenants-db-secret"
+JDBC_URL='jdbc:postgresql://postgres-ha-postgresql-primary.postgres.svc.cluster.local:5432/fineract_tenants'
+echo "==> Secret fineract-tenants-db-secret (shared postgres-ha)"
 kubectl -n "$NS" create secret generic fineract-tenants-db-secret \
   --from-literal=username="$DB_USER" \
   --from-literal=password="$DB_PASS" \
-  --from-literal=jdbc-url='jdbc:postgresql://fineractdb:5432/fineract_tenants' \
+  --from-literal=jdbc-url="$JDBC_URL" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> Argo AppProject + root app (Bước 5)"

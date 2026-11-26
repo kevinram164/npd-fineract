@@ -32,7 +32,7 @@ Giống banking/shop: **không** apply Argo trước khi Harbor + Vault (+ pull-
 | **2** | KV `secret/fineract/{db,harbor,harbor-pull}` + policy/role | `scripts/vault-seed-fineract.sh` → `vault-setup-k8s-auth.sh` |
 | **3** | Secret `harbor-pull-creds` | `create-harbor-pull-secret.sh` (`VAULT_PATH=secret/fineract/harbor-pull`) |
 | **4** | Job Jenkins + catalog `npd-fineract` trong shared library | UI Jenkins + Dockerfile mirror |
-| **5** | Sync chart (Postgres in-ns + server + web) | `deploy/dev-k8s/argocd/*` |
+| **5** | Argo: db-init trên postgres-ha → chart server + web | `deploy/dev-k8s/argocd/*` |
 
 ---
 
@@ -49,7 +49,7 @@ Jenkins + `platform@main`, Harbor, Argo CD, Vault + Injector, OTel Collector, In
 | Ns `npd-fineract` | RBAC / Vault role |
 | Harbor project | `npd-fineract` |
 | Vault | `secret/fineract/*`, role `fineract-app` ← SA `fineract-server` |
-| Postgres | **In-chart** lab (`fineractdb`) — không share schema banking |
+| Postgres | **postgres-ha** platform — user/DB `fineract` + `fineract_tenants`/`fineract_default` (Job `fineract-db-init`, giống noli/movie) |
 | Chart | `charts/fineract` |
 
 Không cần RabbitMQ / Redis / Kong / Kafka banking lúc đầu.
