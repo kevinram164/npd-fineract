@@ -1,0 +1,9 @@
+# Trỏ collector platform (cloud-native-platform) — dual Elastic APM + Instana
+observability:
+  otelEndpoint: "http://opentelemetry-collector.observability.svc.cluster.local:4317"
+  otelServiceName: fineract-server
+  extraEnv:
+    OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+    OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=dev-k8s,k8s.namespace.name=npd-fineract,k8s.cluster.name=npd-k8s"
+    # Phase 4: bật Java agent qua JAVA_TOOL_OPTIONS khi image có agent jar
+    # JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xmx1G ..."

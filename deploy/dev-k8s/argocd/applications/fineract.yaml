@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fineract-app
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: fineract
+  source:
+    repoURL: https://github.com/kevinram164/npd-fineract.git
+    targetRevision: dev-k8s
+    path: charts/fineract
+    helm:
+      valueFiles:
+        - ../../deploy/dev-k8s/values/values-images.yaml
+        - ../../deploy/dev-k8s/values/values-observability.yaml
+        - ../../deploy/dev-k8s/values/values-vault.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: npd-fineract
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

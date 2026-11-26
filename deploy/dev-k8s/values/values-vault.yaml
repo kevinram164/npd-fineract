@@ -1,0 +1,4 @@
+# Bật sau khi platform tạo role fineract-app + secret/fineract/db
+vault:
+  enabled: false
+  role: fineract-app

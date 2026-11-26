@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fineract
+description: Apache Fineract + Mifos web-app for NPD (lab)
+type: application
+version: 0.1.0
+appVersion: "1.16.0"

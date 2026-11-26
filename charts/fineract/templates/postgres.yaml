@@ -1,0 +1,83 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fineractdb-pvc
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- if .Values.postgres.persistence.storageClass }}
+  storageClassName: {{ .Values.postgres.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.postgres.persistence.size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fineractdb
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: fineract-server
+    tier: fineractdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fineract-server
+      tier: fineractdb
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: fineract-server
+        tier: fineractdb
+    spec:
+      containers:
+        - name: postgresql
+          image: {{ .Values.postgres.image }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.fineract.existingSecret }}
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.fineract.existingSecret }}
+                  key: password
+            - name: POSTGRES_DB
+              value: fineract_tenants
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          {{- if .Values.postgres.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: fineractdb-pvc
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fineractdb
+  namespace: {{ .Values.namespace }}
+spec:
+  clusterIP: None
+  selector:
+    app: fineract-server
+    tier: fineractdb
+  ports:
+    - port: 5432
+      targetPort: 5432
+{{- end }}

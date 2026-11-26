@@ -1,0 +1,9 @@
+# Jenkins bump tags tại đây (giống banking-demo)
+fineract:
+  image:
+    repository: npd-harbor.co/npd-fineract/fineract-server
+    tag: bootstrap
+webapp:
+  image:
+    repository: openmf/web-app
+    tag: dev

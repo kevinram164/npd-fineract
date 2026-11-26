@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: fineract
+  namespace: argocd
+spec:
+  description: NPD Apache Fineract / Mifos
+  sourceRepos:
+    - https://github.com/kevinram164/npd-fineract.git
+  destinations:
+    - namespace: npd-fineract
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
