@@ -12,23 +12,21 @@ GitOps giống `banking-demo` / `npd-shop`. **Postgres = `postgres-ha` platform*
 | **4** | Jenkins CI + Harbor images | Multibranch + mirror Dockerfiles |
 | **5** | Argo: `fineract-db-init` → `fineract-app` | `argocd/*` |
 
-## Bước 4 — Jenkins CI/CD
+## Bước 4 — Jenkins CI/CD (build từ source)
+
+| Service | Khi sửa gì thì build | Cách build |
+|---------|----------------------|------------|
+| `fineract-server` | `fineract-provider/`, `fineract-core/`, loan/savings/… | Gradle `bootJar` trong Dockerfile (15–45 phút, agent 8Gi) |
+| `web-app` | `docker/web-app/` | Mirror `openmf/web-app` (UI không nằm trong repo Fineract) |
 
 ```bash
-# 0) Library catalog npd-fineract phải có trên origin/main (jenkins-shared-library)
-
-# 1) Mirror lần đầu (tag bootstrap) — máy có docker/crane
-export HARBOR_USER='robot$npd-fineract+ci-push'
-export HARBOR_PASS='...'
-bash scripts/mirror-images-to-harbor.sh
-
-# 2) Jenkins → New Item → Multibranch Pipeline "npd-fineract"
-#    Branch: GitHub kevinram164/npd-fineract, discover dev-k8s
-#    Script Path: Jenkinsfile
-#    Build with Parameters: BUILD_TARGET=fineract-server,web-app  (lần đầu)
+# Jenkins Multibranch → branch dev-k8s
+# Force build source lần đầu sau khi đổi Dockerfile:
+#   BUILD_TARGET=fineract-server
+#
+# Sửa Java → push dev-k8s → auto detect (watchPath + sharedTriggers) → build
+# Expect: stage Build chậm hơn mirror; log có ./gradlew :fineract-provider:bootJar
 ```
-
-Pipeline: Kaniko → Harbor → bump `values-images.yaml` → Argo sync Harbor tags.
 
 ## Bước 1–3
 

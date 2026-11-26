@@ -1,11 +1,27 @@
-# NB No ASF ASL header here due to FINERACT-1195
-**/build/*
-**/.gradle/*
-**/bin/*
-
-*.jar
-*.war
-
-# Incremental "docker build" is faster if we can modify the Dockerfile
-# without "COPY ." re-transferring everything into the builder container.
-Dockerfile
+.git
+.github
+.agents
+.claude
+.theia
+**/.gradle
+**/build
+**/bin
+**/out
+charts
+deploy
+docs
+kubernetes
+integration-tests
+twofactor-tests
+oauth2-tests
+oauth2-twofactor-tests
+fineract-e2e-tests-core
+fineract-e2e-tests-runner
+fineract-doc
+tools
+*.md
+NOTICE-NPD.md
+agent-transcripts
+**/*.iml
+**/.idea
+**/node_modules

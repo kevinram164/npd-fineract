@@ -1,6 +1,6 @@
-// Jenkins Multibranch — nhánh dev-k8s
-// Library: platform@main (catalog project npd-fineract)
-// Flow: Kaniko mirror openmf → Harbor → bump deploy/dev-k8s/values/values-images.yaml → Argo
+// CI: sửa code Java (fineract-*) → Kaniko multi-stage Gradle → Harbor → bump values-images → Argo
+// UI web-app vẫn mirror openmf (không có source UI trong repo này).
+// Lần đầu / force: BUILD_TARGET=fineract-server  (hoặc all). Expect 15–45 phút.
 
 @Library('platform@main') _
 
