@@ -1,3 +1,5 @@
+# Chỉ bỏ thứ không cần build — KHÔNG loại module trong settings.gradle
+# (Gradle 9 yêu cầu mọi projectDirectory tồn tại).
 .git
 .github
 .agents
@@ -11,17 +13,10 @@ charts
 deploy
 docs
 kubernetes
-integration-tests
-twofactor-tests
-oauth2-tests
-oauth2-twofactor-tests
-fineract-e2e-tests-core
-fineract-e2e-tests-runner
-fineract-doc
 tools
 *.md
 NOTICE-NPD.md
-agent-transcripts
 **/*.iml
 **/.idea
 **/node_modules
+docker/web-app
