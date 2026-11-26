@@ -1,3 +1,4 @@
+# AppProject fineract — ns npd-fineract + Job db-init trên postgres-ha dùng chung.
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
@@ -9,6 +10,8 @@ spec:
     - https://github.com/kevinram164/npd-fineract.git
   destinations:
     - namespace: npd-fineract
+      server: https://kubernetes.default.svc
+    - namespace: postgres
       server: https://kubernetes.default.svc
     - namespace: argocd
       server: https://kubernetes.default.svc

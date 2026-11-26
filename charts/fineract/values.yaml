@@ -1,36 +1,40 @@
-# Default values — override bằng deploy/dev-k8s/values/*.yaml
+# Defaults — override bằng values-dev-k8s.yaml (Argo)
 
 namespace: npd-fineract
 
-imagePullSecrets:
-  - name: harbor-pull-creds
+# Bootstrap: Docker Hub images → để trống. Sau này Harbor → thêm harbor-pull-creds
+imagePullSecrets: []
 
 fineract:
   enabled: true
   replicaCount: 1
   image:
-    repository: npd-harbor.co/npd-fineract/fineract-server
-    tag: bootstrap
+    repository: openmf/fineract
+    tag: develop
     pullPolicy: IfNotPresent
-  # Lab bootstrap: có thể trỏ image upstream trước khi Jenkins build
-  # repository: apache/fineract
-  # tag: latest
   service:
     port: 8080
+  jdbcUrl: jdbc:postgresql://postgres-ha-postgresql-primary.postgres.svc.cluster.local:5432/fineract_tenants
+  tenantDb:
+    host: postgres-ha-postgresql-primary.postgres.svc.cluster.local
+    port: "5432"
   resources:
     requests:
       cpu: 200m
-      memory: 1Gi
+      memory: 1536Mi
     limits:
-      cpu: "1"
-      memory: 2Gi
+      cpu: "2"
+      memory: 3Gi
   env:
     FINERACT_NODE_ID: "1"
     FINERACT_SERVER_SSL_ENABLED: "false"
     FINERACT_SERVER_PORT: "8080"
     FINERACT_HIKARI_DRIVER_SOURCE_CLASS_NAME: org.postgresql.Driver
-    JAVA_TOOL_OPTIONS: "-Xmx1G -XX:MaxMetaspaceSize=256m"
-  # DB URL/user/pass: Vault inject (values-vault) hoặc secretName
+    FINERACT_DEFAULT_TENANTDB_NAME: fineract_default
+    FINERACT_DEFAULT_TENANTDB_IDENTIFIER: default
+    FINERACT_DEFAULT_TENANTDB_TIMEZONE: UTC
+    # develop image (Java 25 + Liquibase) cần heap lớn hơn lab tối thiểu
+    JAVA_TOOL_OPTIONS: "-Xmx1536m -XX:MaxMetaspaceSize=256m"
   existingSecret: fineract-tenants-db-secret
 
 webapp:
@@ -40,6 +44,8 @@ webapp:
     repository: openmf/web-app
     tag: dev
     pullPolicy: IfNotPresent
+  # Phải khớp ingress host API (f5-lb TLS)
+  fineractApiUrl: https://npd-fineract.co
   service:
     port: 80
   resources:
@@ -50,14 +56,14 @@ webapp:
       cpu: "500m"
       memory: 1Gi
 
+# Mặc định tắt — dùng postgres-ha platform. Bật chỉ khi lab offline không có HA.
 postgres:
-  # Lab only — production: external Postgres + Vault
-  enabled: true
+  enabled: false
   image: postgres:17.5
   persistence:
     enabled: true
     size: 10Gi
-    storageClass: ""   # set cluster default / longhorn / local-path
+    storageClass: nfs-csi
   resources:
     requests:
       cpu: 500m
@@ -68,17 +74,18 @@ postgres:
 
 ingress:
   enabled: true
-  className: nginx
+  className: haproxy
   hosts:
-    fineract: fineract.npd.co
-    webapp: mifos.npd.co
+    fineract: npd-fineract.co
+    webapp: npd-mifos.co
   tls: []
 
 observability:
   otelEndpoint: "http://opentelemetry-collector.observability.svc.cluster.local:4317"
   otelServiceName: fineract-server
-  # Phase 4: gắn OTel Java agent / Instana agent qua extraEnv hoặc initContainer
-  extraEnv: {}
+  extraEnv:
+    OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+    OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=dev-k8s,k8s.namespace.name=npd-fineract,k8s.cluster.name=npd-k8s"
 
 vault:
   enabled: false

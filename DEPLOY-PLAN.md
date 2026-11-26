@@ -1,19 +1,62 @@
-# NPD Fineract — kế hoạch triển khai (giống banking-demo)
+# NPD Fineract — kế hoạch triển khai (giống banking-demo / npd-shop)
 
-Repo fork nội bộ từ [Apache Fineract](https://github.com/apache/fineract) (Apache-2.0).  
-Mục tiêu: GitOps trên `npd-k8s` giống `banking-demo` — Helm + Argo CD + Jenkins + Instana/Grafana, **tái dụng platform** tối đa.
+Repo fork từ [Apache Fineract](https://github.com/apache/fineract) (Apache-2.0).  
+GitOps trên `npd-k8s`: Helm + Argo CD + Jenkins + Vault + Harbor + Instana/Grafana — **tái dụng platform**.
 
 | | |
 |--|--|
-| **Repo GitHub (dự kiến)** | `https://github.com/kevinram164/npd-fineract.git` |
-| **Nhánh lab** | `dev-k8s` (sau bootstrap) |
+| **Repo** | `https://github.com/kevinram164/npd-fineract.git` |
+| **Nhánh** | `dev-k8s` |
 | **Namespace** | `npd-fineract` |
 | **Harbor** | `npd-harbor.co/npd-fineract/...` |
-| **Tham chiếu** | `banking-demo` `dev-k8s`, `cloud-native-platform`, `LOGS-TO-INSTANA.md` |
+| **Tham chiếu** | `banking-demo` `dev-k8s`, `npd-shop` `deploy/dev-k8s`, `cloud-native-platform` |
 
 ---
 
-## 1. Kiến trúc mục tiêu
+## Thứ tự đúng (bắt buộc)
+
+Giống banking/shop: **không** apply Argo trước khi Harbor + Vault (+ pull-secret) sẵn. Jenkins image có thể tạm bỏ qua nếu chart còn pull `openmf/*` từ Docker Hub.
+
+```
+① Harbor project + robot
+② Vault seed + role fineract-app
+③ harbor-pull-creds (ns npd-fineract)
+④ Jenkins Multibranch / mirror image  (có thể song song sau ③)
+⑤ Argo AppProject + app-of-apps
+⑥ Observability (OTel Java / Instana AP)
+```
+
+| Bước | Việc | Script |
+|------|------|--------|
+| **1** | Project Harbor `npd-fineract`, robot `k8s-pull` + `ci-push` | `scripts/harbor-setup-project.sh` |
+| **2** | KV `secret/fineract/{db,harbor,harbor-pull}` + policy/role | `scripts/vault-seed-fineract.sh` → `vault-setup-k8s-auth.sh` |
+| **3** | Secret `harbor-pull-creds` | `create-harbor-pull-secret.sh` (`VAULT_PATH=secret/fineract/harbor-pull`) |
+| **4** | Job Jenkins + catalog `npd-fineract` trong shared library | UI Jenkins + Dockerfile mirror |
+| **5** | Argo: db-init trên postgres-ha → chart server + web | `deploy/dev-k8s/argocd/*` |
+
+---
+
+## Platform dùng chung vs riêng
+
+### Đã có — không cài lại
+
+Jenkins + `platform@main`, Harbor, Argo CD, Vault + Injector, OTel Collector, Instana agent, Prometheus/Grafana, Ingress HAProxy / f5-lb `10.100.1.100`.
+
+### Riêng Fineract
+
+| Item | Ghi chú |
+|------|---------|
+| Ns `npd-fineract` | RBAC / Vault role |
+| Harbor project | `npd-fineract` |
+| Vault | `secret/fineract/*`, role `fineract-app` ← SA `fineract-server` |
+| Postgres | **postgres-ha** platform — user/DB `fineract` + `fineract_tenants`/`fineract_default` (Job `fineract-db-init`, giống noli/movie) |
+| Chart | `charts/fineract` |
+
+Không cần RabbitMQ / Redis / Kong / Kafka banking lúc đầu.
+
+---
+
+## Kiến trúc CD
 
 ```
 Developer push → Jenkins (platformPipeline / Kaniko)
@@ -24,197 +67,43 @@ Developer push → Jenkins (platformPipeline / Kaniko)
          bump deploy/dev-k8s/values/values-images.yaml
                       │
                       ▼
-              Argo CD (app-of-apps fineract-*)
+              Argo CD (fineract-root-dev-k8s)
                       │
                       ▼
-         ns npd-fineract: fineract-server + web-app + Postgres (lab)
+         ns npd-fineract: fineract-server + web-app + Postgres
                       │
-         OTel / Instana Java agent → collector observability → Instana
-         /metrics → Prometheus (UWM) → Grafana
-```
-
-Khác banking-demo: Fineract gần **1–2 workload JVM** (+ DB + UI), không phải nhiều microservice Python.
-
----
-
-## 2. Platform — dùng chung vs riêng
-
-### Dùng chung (đã có trên NPD — không cài lại)
-
-| Thành phần | Ns / nơi | Cách Fineract dùng |
-|------------|----------|-------------------|
-| **Jenkins** + shared library `platform@main` | Jenkins platform | `Jenkinsfile` gọi `platformPipeline` (project=`npd-fineract`) |
-| **Harbor** | `npd-harbor.co` | Project mới `npd-fineract` (tạo 1 lần) |
-| **Argo CD** | `argocd` | AppProject + Application trỏ repo này |
-| **Vault** + Agent Injector | `vault` | Role mới `fineract-app` + KV path (mục 4) |
-| **OTel Collector** | `observability` | OTLP `:4317` → APM + Instana (đã có pipeline logs/traces) |
-| **Instana agent** | `instana-agent` | OTLP ingest; JVM attach / OTel Java agent |
-| **Prometheus / Grafana** | `monitoring` | ServiceMonitor trong ns app (UWM như banking) |
-| **Ingress / DNS lab** | cluster | Host vd. `fineract.npd.co`, `mifos.npd.co` |
-| **Keycloak** (tuỳ chọn sau) | platform | OAuth2 cho UI/API — phase 2 |
-
-### Riêng cho Fineract (trong repo / ns app)
-
-| Thành phần | Lý do |
-|------------|--------|
-| Namespace `npd-fineract` | Tách RBAC, Vault role, NetworkPolicy |
-| Helm chart `charts/fineract` | Server + web-app (+ optional Postgres lab) |
-| Postgres **riêng** (lab) hoặc DB ngoài | Fineract cần DB `fineract_tenants` + `fineract_default` — **không** share schema với `npd-banking` |
-| Image build | Gradle/Jib hoặc Dockerfile từ upstream |
-| Application Perspective Instana `npd-fineract` | Filter Dest Service Name |
-
-### Không dùng / không bắt buộc lúc đầu
-
-| Thành phần | Ghi chú |
-|------------|---------|
-| RabbitMQ / Redis banking | Fineract không cần stack messaging của banking-demo |
-| Kong gateway banking | Có thể Ingress thẳng; Gateway sau nếu cần |
-| Kafka Strimzi | Chỉ khi bật Fineract external events |
-
----
-
-## 3. Phases triển khai
-
-### Phase 0 — Repo & GitHub (bây giờ)
-
-1. Tạo repo GitHub `kevinram164/npd-fineract` (private/public tuỳ bạn).  
-2. Push `main` (đã set `origin`).  
-3. Tạo nhánh `dev-k8s` từ `main`.  
-4. Giữ NOTICE/LICENSE Apache; ghi `NOTICE-NPD.md` nếu fork có chỉnh NPD.
-
-### Phase 1 — Helm + Argo (CD skeleton)
-
-1. Hoàn thiện `charts/fineract` (Deployment/Service/Ingress/PVC).  
-2. `deploy/dev-k8s/argocd/*` — AppProject `fineract`, app-of-apps, apps: namespace, postgres, server, webapp, ingress.  
-3. `values-images.yaml` — tag image Harbor.  
-4. Apply AppProject + root Application trên cluster (giống banking).
-
-**Acceptance:** Argo sync Healthy; UI Mifos login `mifos`/`password` (lab).
-
-### Phase 2 — Jenkins CI
-
-1. Harbor project `npd-fineract` + robot account trong Vault (`platform/harbor` hoặc path riêng).  
-2. `Jenkinsfile` dùng `platformPipeline` (điền `gitRepoUrl`, `harborProject`, `gitopsValuesFile`).  
-3. Pipeline: build image Fineract (+ web-app nếu build từ source UI) → push Harbor → bump tag.
-
-**Acceptance:** Commit → image mới → Argo cập nhật pod.
-
-### Phase 3 — Secrets (Vault)
-
-Xem mục 4.
-
-### Phase 4 — Observability
-
-1. **Traces/logs:**  
-   - Ưu tiên lab: **OTel Java agent** → `opentelemetry-collector.observability:4317` (khớp banking).  
-   - Hoặc Instana Java agent attach (nếu muốn sensor JVM sâu).  
-2. Env: `OTEL_SERVICE_NAME=fineract-server`, resource attrs `k8s.namespace.name=npd-fineract`.  
-3. `values-observability.yaml` + ServiceMonitor `/actuator/prometheus` nếu có.  
-4. Grafana: dashboard JVM/HTTP (reuse stack monitoring).  
-5. Instana AP: Dest Service = `fineract-server` (và web nếu có).
-
-**Acceptance:** Analytics Calls + Logs có service Fineract; Grafana scrape được.
-
-### Phase 5 — Nghiệp vụ & harden
-
-1. Seed sản phẩm savings/loan, client demo.  
-2. PVC StorageClass cluster (bỏ `hostPath` lab).  
-3. NetworkPolicy, resource limits theo worker.  
-4. (Tuỳ chọn) tích hợp Keycloak.
-
----
-
-## 4. Vault — làm thế nào?
-
-Giống banking: **Vault đã chạy sẵn**; chỉ thêm path + role + annotate SA.
-
-### KV (đề xuất)
-
-```
-secret/fineract/db
-  FINERACT_HIKARI_USERNAME
-  FINERACT_HIKARI_PASSWORD
-  FINERACT_HIKARI_JDBC_URL          # jdbc:postgresql://...
-  FINERACT_DEFAULT_TENANTDB_PWD
-  # ... các key Fineract cần
-```
-
-### Policy / role
-
-| | banking (tham chiếu) | fineract |
-|--|----------------------|----------|
-| Role | `banking-app` | `fineract-app` |
-| SA ns | `npd-banking` | `npd-fineract` |
-| Inject | annotation Vault Agent trên Deployment | tương tự |
-
-### Helm values (`values-vault.yaml`)
-
-```yaml
-global:
-  vault:
-    enabled: true
-    role: fineract-app
-    dbPath: secret/data/fineract/db
-```
-
-Template Deployment: annotation `vault.hashicorp.com/agent-inject` + template export env (copy pattern `banking-demo` `values-vault.yaml` + chart).
-
-### Việc trên `cloud-native-platform`
-
-1. Vault policy `fineract-app` đọc `secret/data/fineract/*`.  
-2. K8s auth role bind SA `fineract-server` (và web nếu cần).  
-3. Seed secret lab (script tương tự `instana` / banking seed).
-
-**Không** nhét password Postgres vào Git.
-
----
-
-## 5. So sánh nhanh với banking-demo
-
-| | banking-demo | npd-fineract |
-|--|--------------|--------------|
-| Ngôn ngữ | Python FastAPI × N | Java Spring (Fineract) + UI |
-| Chart | Umbrella nhiều subchart | 1 chart (server + web + db) |
-| Jenkins | `platformPipeline` | Cùng library |
-| GitOps | `deploy/dev-k8s` | Cùng layout |
-| Vault | `secret/banking/*` | `secret/fineract/*` |
-| OTel | SDK Python | Java agent / Micrometer OTLP |
-| Instana filter | api-producer, … | fineract-server |
-| DB | Postgres banking | Postgres Fineract **riêng** |
-
----
-
-## 6. Cấu trúc thư mục NPD (đã scaffold)
-
-```
-npd-fineract/
-  ├── (upstream Apache Fineract source)
-  ├── charts/fineract/           # Helm
-  ├── deploy/dev-k8s/
-  │   ├── README.md
-  │   ├── argocd/
-  │   └── values/
-  ├── Jenkinsfile
-  ├── DEPLOY-PLAN.md             # file này
-  └── NOTICE / LICENSE           # giữ Apache
+         OTel → collector.observability:4317 → Instana
 ```
 
 ---
 
-## 7. Việc làm ngay (checklist)
+## Vault
 
-- [ ] Tạo repo GitHub `npd-fineract`, `git push -u origin main`  
-- [ ] `git checkout -b dev-k8s` && push  
-- [ ] Harbor project `npd-fineract`  
-- [ ] Vault path + role `fineract-app` (platform)  
-- [ ] Apply Argo AppProject + app-of-apps  
-- [ ] Phase 1 sync image upstream trước, Phase 2 mới build từ source  
+```
+secret/fineract/db            # JDBC user/pass (lab + sau này Agent inject)
+secret/fineract/harbor-pull   # robot$npd-fineract+k8s-pull
+secret/fineract/harbor        # robot$npd-fineract+ci-push  (Kaniko)
+```
+
+Role `fineract-app` bind SA `fineract-server` @ `npd-fineract` (trong `vault-setup-k8s-auth.sh`).  
+Bật inject: `deploy/dev-k8s/values/values-vault.yaml` → `vault.enabled: true` (sau khi secret seed OK).
 
 ---
 
-## 8. Rủi ro / lưu ý
+## Checklist
 
-- Upstream Fineract build nặng (JDK mới, Gradle heap lớn) — CI cần agent đủ RAM hoặc dùng image `apache/fineract` / `openmf/fineract` giai đầu.  
-- Manifest mifosx dùng `hostPath` — trên kubeadm NPD đổi sang StorageClass thật.  
-- License Apache-2.0: giữ attribution khi fork.  
-- Tab Log trong Application Perspective Instana có thể trống INFO — dùng Analytics → Logs (như banking).
+- [x] Repo GitHub + nhánh `dev-k8s`
+- [ ] **Bước 1** Harbor project + robot
+- [ ] **Bước 2** Vault seed + `fineract-app`
+- [ ] **Bước 3** `harbor-pull-creds`
+- [ ] **Bước 4** Jenkins + Dockerfile / mirror image
+- [ ] **Bước 5** Argo sync Healthy; login `mifos`/`password`
+- [ ] OTel Java agent + Instana AP `npd-fineract`
+
+---
+
+## Rủi ro
+
+- Build Fineract (Gradle) nặng — ưu tiên mirror `openmf/fineract` vào Harbor trước, CI từ source sau.
+- Ingress class NPD = **`haproxy`** (không dùng `nginx`).
+- License Apache-2.0: giữ NOTICE/LICENSE.

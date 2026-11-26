@@ -1,9 +1,14 @@
-# Jenkins bump tags tại đây (giống banking-demo)
+# Jenkins GitOpsUpdater bump `tag` (quote SHA). Argo load file này sau values-dev-k8s.
+# Lần đầu: chạy scripts/mirror-images-to-harbor.sh (tag bootstrap) hoặc đợi Jenkins build.
+
 fineract:
   image:
     repository: npd-harbor.co/npd-fineract/fineract-server
-    tag: bootstrap
+    tag: "39ba248"
+    pullPolicy: Always
+
 webapp:
   image:
-    repository: openmf/web-app
-    tag: dev
+    repository: npd-harbor.co/npd-fineract/web-app
+    tag: "39ba248"
+    pullPolicy: Always

@@ -1,0 +1,30 @@
+# Argo CD (dev-k8s) — Postgres = platform postgres-ha.
+# Image repository/tag: deploy/dev-k8s/values/values-images.yaml (Jenkins bump).
+
+namespace: npd-fineract
+imagePullSecrets:
+  - name: harbor-pull-creds
+
+fineract:
+  jdbcUrl: jdbc:postgresql://postgres-ha-postgresql-primary.postgres.svc.cluster.local:5432/fineract_tenants
+  tenantDb:
+    host: postgres-ha-postgresql-primary.postgres.svc.cluster.local
+    port: "5432"
+
+webapp:
+  # UI gọi API qua f5-lb (TLS)
+  fineractApiUrl: https://npd-fineract.co
+
+# Tắt Postgres embed — dùng postgres-ha + Job fineract-db-init
+postgres:
+  enabled: false
+
+ingress:
+  enabled: true
+  className: haproxy
+  hosts:
+    fineract: npd-fineract.co
+    webapp: npd-mifos.co
+
+vault:
+  enabled: false

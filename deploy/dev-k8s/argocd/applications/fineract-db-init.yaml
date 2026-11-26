@@ -1,0 +1,30 @@
+# DB/user fineract trên postgres-ha dùng chung (PreSync Job, idempotent).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fineract-db-init
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: npd-fineract
+    app.kubernetes.io/component: db-init
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: fineract
+  source:
+    repoURL: https://github.com/kevinram164/npd-fineract.git
+    targetRevision: dev-k8s
+    path: deploy/dev-k8s/manifests/db-init
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: postgres
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: false
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

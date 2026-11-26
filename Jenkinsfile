@@ -1,9 +1,6 @@
-// Jenkinsfile — nhánh dev-k8s (pattern banking-demo)
-// Shared library: https://github.com/kevinram164/jenkins-shared-library
-// CD: bump tag trong deploy/dev-k8s/values/values-images.yaml → ArgoCD sync.
-//
-// Phase 2: bổ sung Dockerfile/Kaniko context cho fineract-server (Gradle/Jib).
-// Ban đầu có thể deploy image upstream và chỉ dùng Argo (không cần Jenkins).
+// CI: sửa code Java (fineract-*) → Kaniko multi-stage Gradle → Harbor → bump values-images → Argo
+// UI web-app vẫn mirror openmf (không có source UI trong repo này).
+// Lần đầu / force: BUILD_TARGET=fineract-server  (hoặc all). Expect 15–45 phút.
 
 @Library('platform@main') _
 
@@ -18,6 +15,6 @@ platformPipeline([
   kanikoUseCache       : false,
   vaultAddr            : 'http://vault.vault.svc.cluster.local:8200',
   vaultRole            : 'jenkins-kaniko',
-  vaultHarborPath      : 'platform/harbor',
+  vaultHarborPath      : 'fineract/harbor',
   vaultGithubPath      : 'platform/github',
 ])

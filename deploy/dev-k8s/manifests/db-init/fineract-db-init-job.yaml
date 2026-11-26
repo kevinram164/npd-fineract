@@ -1,0 +1,79 @@
+# PreSync — user/DB Fineract trên postgres-ha dùng chung (idempotent).
+# Không đụng banking / noli / movie / keycloak.
+# Password: Vault secret/fineract/db (role fineract-db-init).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fineract-db-init
+  namespace: postgres
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-2"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fineract-db-init
+  namespace: postgres
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: npd-fineract
+    app.kubernetes.io/component: db-init
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app: fineract-db-init
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-pre-populate-only: "true"
+        vault.hashicorp.com/role: "fineract-db-init"
+        vault.hashicorp.com/agent-inject-secret-db-password: "secret/data/fineract/db"
+        vault.hashicorp.com/agent-inject-template-db-password: |-
+          {{- with secret "secret/data/fineract/db" -}}
+          {{- .Data.data.password -}}
+          {{- end -}}
+    spec:
+      serviceAccountName: fineract-db-init
+      restartPolicy: OnFailure
+      containers:
+        - name: init
+          image: postgres:16-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-ha-postgresql
+                  key: postgres-password
+            - name: PGHOST
+              value: postgres-ha-postgresql-primary.postgres.svc.cluster.local
+            - name: PGUSER
+              value: postgres
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              set -e
+              PW="$(cat /vault/secrets/db-password)"
+              USERNAME=fineract
+              psql -d postgres -tc "SELECT 1 FROM pg_roles WHERE rolname='${USERNAME}'" | grep -q 1 || \
+                psql -d postgres -c "CREATE USER ${USERNAME};"
+              echo "ALTER USER ${USERNAME} WITH LOGIN PASSWORD :'pw';" | psql -d postgres -v ON_ERROR_STOP=1 -v pw="$PW"
+              for db in fineract_tenants fineract_default; do
+                psql -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='${db}'" | grep -q 1 || \
+                  psql -d postgres -c "CREATE DATABASE ${db} OWNER ${USERNAME};"
+                psql -d postgres -c "ALTER DATABASE ${db} OWNER TO ${USERNAME};"
+                psql -d "${db}" -c "GRANT ALL ON SCHEMA public TO ${USERNAME};"
+              done
+              echo "fineract DB init done (tenants + default on postgres-ha)"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

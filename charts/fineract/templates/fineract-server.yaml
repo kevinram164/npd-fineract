@@ -28,6 +28,7 @@ spec:
         vault.hashicorp.com/agent-pre-populate-only: "true"
       {{- end }}
     spec:
+      serviceAccountName: fineract-server
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -45,11 +46,7 @@ spec:
               value: {{ $v | quote }}
             {{- end }}
             - name: FINERACT_HIKARI_JDBC_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.fineract.existingSecret }}
-                  key: jdbc-url
-                  optional: true
+              value: {{ .Values.fineract.jdbcUrl | quote }}
             - name: FINERACT_HIKARI_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -60,6 +57,22 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.fineract.existingSecret }}
                   key: password
+            - name: FINERACT_DEFAULT_TENANTDB_HOSTNAME
+              value: {{ .Values.fineract.tenantDb.host | quote }}
+            - name: FINERACT_DEFAULT_TENANTDB_PORT
+              value: {{ .Values.fineract.tenantDb.port | quote }}
+            - name: FINERACT_DEFAULT_TENANTDB_UID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.fineract.existingSecret }}
+                  key: username
+            - name: FINERACT_DEFAULT_TENANTDB_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.fineract.existingSecret }}
+                  key: password
+            - name: FINERACT_DEFAULT_TENANTDB_CONN_PARAMS
+              value: ""
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.observability.otelEndpoint | quote }}
             - name: OTEL_SERVICE_NAME
