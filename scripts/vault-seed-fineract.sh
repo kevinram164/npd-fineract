@@ -1,29 +1,32 @@
-#!/usr/bin/env bash
-# Seed Vault cho npd-fineract (lab). Chạy trong vault-0 hoặc bastion có vault CLI.
+#!/bin/sh
+# Seed Vault cho npd-fineract. Chạy trong vault-0 (chỉ có sh, không bash/openssl).
 #
-# Trước đó: scripts/harbor-setup-project.sh → HARBOR_PULL_TOKEN / HARBOR_PUSH_TOKEN
-#
-#   export VAULT_ADDR=http://127.0.0.1:8200
+# Trên npd-master:
 #   export VAULT_TOKEN=...
-#   export HARBOR_PULL_TOKEN='...'
-#   export HARBOR_PUSH_TOKEN='...'
+#   export HARBOR_PULL_TOKEN=...
+#   export HARBOR_PUSH_TOKEN=...
 #   export REGISTRY=npd-harbor.co
-#   bash scripts/vault-seed-fineract.sh
-set -euo pipefail
+#   export FINERACT_DB_PASSWORD="$(openssl rand -base64 18 | tr -d '/+=' | head -c 20)"
+#   kubectl exec -i -n vault vault-0 -- env \
+#     VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN="$VAULT_TOKEN" \
+#     HARBOR_PULL_TOKEN="$HARBOR_PULL_TOKEN" HARBOR_PUSH_TOKEN="$HARBOR_PUSH_TOKEN" \
+#     REGISTRY=npd-harbor.co FINERACT_DB_PASSWORD="$FINERACT_DB_PASSWORD" DEBUG=1 \
+#     sh -s < scripts/vault-seed-fineract.sh
+set -eu
 
 : "${VAULT_ADDR:?set VAULT_ADDR}"
 : "${VAULT_TOKEN:?set VAULT_TOKEN}"
-: "${HARBOR_PULL_TOKEN:?set HARBOR_PULL_TOKEN (robot npd-fineract+k8s-pull)}"
-: "${HARBOR_PUSH_TOKEN:?set HARBOR_PUSH_TOKEN (robot npd-fineract+ci-push)}"
+: "${HARBOR_PULL_TOKEN:?set HARBOR_PULL_TOKEN}"
+: "${HARBOR_PUSH_TOKEN:?set HARBOR_PUSH_TOKEN}"
+: "${FINERACT_DB_PASSWORD:?set FINERACT_DB_PASSWORD on host before piping into vault-0}"
 
 REGISTRY="${REGISTRY:-npd-harbor.co}"
-# Shared platform Postgres (giống banking / noli / movie) — chỉ user/DB riêng.
 PG_HOST="${PG_HOST:-postgres-ha-postgresql-primary.postgres.svc.cluster.local}"
 DB_USER="${DB_USER:-fineract}"
-DB_PASSWORD="${FINERACT_DB_PASSWORD:-$(openssl rand -base64 18 | tr -d '/+=' | head -c 20)}"
+DB_PASSWORD="${FINERACT_DB_PASSWORD}"
 JDBC_URL="${JDBC_URL:-jdbc:postgresql://${PG_HOST}:5432/fineract_tenants}"
 
-echo "==> secret/fineract/db (user fineract trên postgres-ha)"
+echo "==> secret/fineract/db (user fineract on postgres-ha)"
 vault kv put secret/fineract/db \
   username="${DB_USER}" \
   password="${DB_PASSWORD}" \
@@ -50,9 +53,6 @@ echo "==> done"
 echo "  vault kv get secret/fineract/db"
 echo "  vault kv get secret/fineract/harbor-pull"
 echo "  vault kv get secret/fineract/harbor"
-echo
-echo "Tiếp: vault-setup-k8s-auth.sh (roles fineract-app + fineract-db-init)"
-echo "      rồi create-harbor-pull-secret + Argo (fineract-db-init → fineract-app)"
-if [[ "${DEBUG:-0}" == "1" ]]; then
+if [ "${DEBUG:-0}" = "1" ]; then
   echo "  DB password=${DB_PASSWORD}"
 fi
