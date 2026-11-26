@@ -14,8 +14,10 @@ deploy
 docs
 kubernetes
 tools
-*.md
+# Giữ APACHE_LICENSETEXT.md / LICENSE / NOTICE (build.gradle đọc license text)
 NOTICE-NPD.md
+README.md
+DEPLOY-PLAN.md
 **/*.iml
 **/.idea
 **/node_modules
