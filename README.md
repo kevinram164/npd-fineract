@@ -4,14 +4,16 @@ Fork nội bộ từ [Apache Fineract](https://github.com/apache/fineract) (Apac
 
 ## Kiến trúc tổng quan (NPD)
 
-![NPD Fineract architecture — GitHub → Jenkins/Harbor → Argo CD → ns npd-fineract (Web UI, Fineract API, Postgres) → OTel/Instana/Grafana/Vault](docs/images/npd-fineract-architecture.jpg)
+![NPD Fineract — Delivery, runtime ns npd-fineract, business capabilities, shared platform](docs/images/npd-fineract-architecture.jpg)
+
+Bốn lớp trên sơ đồ:
 
 | Lớp | Thành phần |
 |-----|------------|
-| **CI/CD** | GitHub `npd-fineract` → Jenkins (`platformPipeline`) → Harbor → Argo CD |
-| **Runtime** | Namespace `npd-fineract`: Mifos Web UI, Fineract Server (REST), PostgreSQL |
-| **Nghiệp vụ** | Client/KYC, savings & loans, ledger, COB, maker-checker (core banking) |
-| **Platform dùng chung** | Vault, OTel Collector, Instana agent, Prometheus/Grafana, Harbor, Argo |
+| **1. Delivery** | GitHub `npd-fineract` → Jenkins (`platformPipeline` / Kaniko) → Harbor → Argo CD (Helm) |
+| **2. Runtime** | Namespace `npd-fineract`: Mifos Web UI → Fineract Server (Java/Spring REST) → PostgreSQL (`fineract_tenants` / `fineract_default`) |
+| **3. Nghiệp vụ** | Clients & KYC · Savings · Loans & repayment · General ledger · COB batch · Maker-checker & audit |
+| **4. Platform dùng chung** | Vault · OpenTelemetry Collector · Instana (traces + logs) · Prometheus · Grafana |
 
 Chi tiết triển khai: [`DEPLOY-PLAN.md`](DEPLOY-PLAN.md) · GitOps lab: [`deploy/dev-k8s/README.md`](deploy/dev-k8s/README.md) · Logs/APM Instana: xem `cloud-native-platform` → `phase9-gitops-platform/instana/LOGS-TO-INSTANA.md`.
 
