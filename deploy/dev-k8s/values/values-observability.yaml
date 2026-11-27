@@ -10,3 +10,10 @@ observability:
     OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=dev-k8s,k8s.namespace.name=npd-fineract,k8s.cluster.name=npd-k8s,service.namespace=npd-fineract"
     # Giảm noise; bật thêm nếu cần debug agent
     OTEL_JAVAAGENT_LOGGING: "none"
+    # Map X-Correlation-ID vào MDC log (ecosystem synthetic)
+    FINERACT_LOGGING_HTTP_CORRELATION_ID_ENABLED: "true"
+    FINERACT_LOGGING_HTTP_CORRELATION_ID_HEADER_NAME: "X-Correlation-ID"
+    # Grafana p95: Micrometer histogram cho http.server.requests
+    FINERACT_MANAGEMENT_PROMETHEUS_ENABLED: "true"
+    FINERACT_MANAGEMENT_ENDPOINT_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
+    FINERACT_MANAGEMENT_METRICS_DISTRIBUTION_HTTP_SERVER_REQUESTS: "true"
