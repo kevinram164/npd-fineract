@@ -78,10 +78,16 @@ kubectl -n npd-fineract logs -l app.kubernetes.io/name=fineract-server --tail=50
 
 ### 3) Instana — Traces / Calls
 
-**Cách search ổn định:** log bot có `trace=<32 hex>` (W3C).  
-Đó **chính là** Instana **Trace ID** — dán vào ô Trace / search Trace (đừng dùng filter tag `x-correlation-id`).
+**Trace ID thống nhất script ↔ app**
 
-`corr=` chỉ là business id; tag header trên Instana lab này hay không hiện → bỏ filter tag.
+1. Script gửi `traceparent` (log bot: `trace=…`) + `X-Correlation-ID` (`corr=…`).
+2. OTel Java agent trên Fineract **tiếp** trace đó (span Instana = cùng ID).
+3. Sau build có `RequestResponseFilter` INFO + `CONSOLE_LOG_PATTERN`/`LOGBACK_MDC`:  
+   `kubectl logs` mỗi API có `[corr…] [trace=…]` — **cùng** `trace=` trên bot.
+4. UI browser không qua script: agent **tự** tạo Trace ID riêng từng request (vẫn có trên Traces).
+
+**Cách search ổn định:** log bot / pod log có `trace=<32 hex>`.  
+Đó **chính là** Instana **Trace ID** — dán vào Traces (đừng dùng filter tag `x-correlation-id` / Analytics Logs nếu chưa thu log).
 
 1. `grep 'ok .*trace=' …/logs/bpm-onboard-*.log | tail`
 2. Copy giá trị `trace=`

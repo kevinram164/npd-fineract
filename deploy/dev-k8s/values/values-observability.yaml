@@ -16,6 +16,10 @@ observability:
     # Instana: index header → tag span (search được corr / BPM flow trên Traces)
     # Tag dạng: http.request.header.x_correlation_id , http.request.header.x_business_flow
     OTEL_INSTRUMENTATION_HTTP_SERVER_CAPTURE_REQUEST_HEADERS: "X-Correlation-ID,X-Business-Flow,X-Business-Step"
+    # Đưa Trace ID (W3C / script traceparent) vào MDC logback → in ra stdout
+    OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED: "true"
+    # correlationId = header X-Correlation-ID; trace_id = OTel agent; traceId = Micrometer (nếu có)
+    CONSOLE_LOG_PATTERN: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%X{correlationId}] [trace=%X{trace_id}%X{traceId}] [%tenantId] --- [%t] %-40.40logger{39} : %m%n"
     # Grafana p95: Micrometer histogram cho http.server.requests
     FINERACT_MANAGEMENT_PROMETHEUS_ENABLED: "true"
     FINERACT_MANAGEMENT_ENDPOINT_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
