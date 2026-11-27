@@ -76,8 +76,12 @@ spec:
           memory: "8Gi"
           cpu: "4"
       env:
+        # GRADLE_OPTS -Xmx KHÔNG ghi đè org.gradle.jvmargs (-Xmx12g) trong gradle.properties.
+        # Cap thật sự nằm ở bước "Gradle memory budget" trước ./gradlew.
+        - name: GRADLE_USER_HOME
+          value: "/home/jenkins/.gradle"
         - name: GRADLE_OPTS
-          value: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1 -Xmx4g"
+          value: "-Dorg.gradle.daemon=false"
         - name: DOCKER_HOST
           value: "tcp://localhost:2375"
         - name: TESTCONTAINERS_HOST_OVERRIDE
@@ -199,6 +203,20 @@ spec:
               export QUERYDSL_JDBC_URL='jdbc:postgresql://localhost:54329/test'
               export QUERYDSL_JDBC_USER=test
               export QUERYDSL_JDBC_PASSWORD=test
+
+              # Cap heap: gradle.properties mặc định -Xmx12g → OOMKilled trong limit 8Gi.
+              # Ghi đè qua GRADLE_USER_HOME (ưu tiên hơn project gradle.properties), giống upstream CI.
+              export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$HOME/.gradle}"
+              mkdir -p "$GRADLE_USER_HOME"
+              GRADLE_JVMARGS=$(sed -n 's/^org\\.gradle\\.jvmargs=//p' gradle.properties)
+              GRADLE_JVMARGS=$(printf '%s' "$GRADLE_JVMARGS" | sed -E 's/-Xmx[^ ]+/-Xmx4g/')
+              {
+                echo "org.gradle.jvmargs=$GRADLE_JVMARGS"
+                echo "org.gradle.workers.max=1"
+                echo "org.gradle.parallel=false"
+                echo "org.gradle.configuration-cache=false"
+              } >> "$GRADLE_USER_HOME/gradle.properties"
+              echo "Gradle memory budget: -Xmx4g workers.max=1 → $GRADLE_USER_HOME/gradle.properties"
 
               chmod +x ./gradlew
               # KHÔNG -x buildJavaSdk: task đó generate Avro Java (BulkMessageItemV1, …)
