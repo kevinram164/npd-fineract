@@ -19,6 +19,7 @@ from common import (  # noqa: E402
     loan_originate,
     loan_repay,
     new_correlation_id,
+    new_trace_id,
     save_clients,
     setup_warnings,
 )
@@ -49,16 +50,20 @@ def main() -> int:
     random.shuffle(candidates)
     for c in candidates[:originate_n]:
         corr = new_correlation_id()
-        print(f"[bpm-loan] originate client={c['client_id']} corr={corr}")
-        r = loan_originate(api, c["client_id"], int(product_id), principal, correlation_id=corr)
+        tid = new_trace_id()
+        print(f"[bpm-loan] originate client={c['client_id']} corr={corr} trace={tid}")
+        r = loan_originate(
+            api, c["client_id"], int(product_id), principal, correlation_id=corr, trace_id=tid
+        )
         if not r.get("ok"):
             fail_o += 1
-            print(f"[bpm-loan] originate FAIL corr={corr} {r.get('detail')}")
+            print(f"[bpm-loan] originate FAIL corr={corr} trace={tid} {r.get('detail')}")
             continue
         c["loan_id"] = r["loan_id"]
         c["loan_correlation_id"] = corr
+        c["loan_trace_id"] = tid
         ok_o += 1
-        print(f"[bpm-loan] originate ok loan={r['loan_id']} corr={corr}")
+        print(f"[bpm-loan] originate ok loan={r['loan_id']} corr={corr} trace={tid}")
 
     save_clients(clients)
 
@@ -71,14 +76,21 @@ def main() -> int:
             break
         c = random.choice(loans)
         corr = new_correlation_id()
+        tid = new_trace_id()
         amount = random.randint(rmin, rmax)
-        r = loan_repay(api, c["loan_id"], amount, payment_type_id, correlation_id=corr)
+        r = loan_repay(
+            api, c["loan_id"], amount, payment_type_id, correlation_id=corr, trace_id=tid
+        )
         if r.get("ok"):
             ok_r += 1
-            print(f"[bpm-loan] repay ok loan={c['loan_id']} amount={amount} corr={corr}")
+            print(
+                f"[bpm-loan] repay ok loan={c['loan_id']} amount={amount} corr={corr} trace={tid}"
+            )
         else:
             fail_r += 1
-            print(f"[bpm-loan] repay FAIL loan={c['loan_id']} corr={corr} {r.get('detail')}")
+            print(
+                f"[bpm-loan] repay FAIL loan={c['loan_id']} corr={corr} trace={tid} {r.get('detail')}"
+            )
 
     print(f"[bpm-loan] summary originate ok={ok_o} fail={fail_o} | repay ok={ok_r} fail={fail_r}")
     return 0

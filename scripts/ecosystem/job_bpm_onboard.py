@@ -16,6 +16,7 @@ from common import (  # noqa: E402
     load_env,
     load_state,
     new_correlation_id,
+    new_trace_id,
     open_savings,
     save_clients,
     save_state,
@@ -48,23 +49,25 @@ def main() -> int:
         idx = start_idx + n
         next_idx = idx + 1
         corr = new_correlation_id()
-        print(f"[bpm-onboard] start corr={corr} idx={idx}")
-        r = create_client_active(api, idx, correlation_id=corr)
+        tid = new_trace_id()
+        print(f"[bpm-onboard] start corr={corr} trace={tid} idx={idx}")
+        r = create_client_active(api, idx, correlation_id=corr, trace_id=tid)
         if not r.get("ok"):
             fail += 1
-            print(f"[bpm-onboard] create FAIL corr={corr} {r.get('detail')}")
+            print(f"[bpm-onboard] create FAIL corr={corr} trace={tid} {r.get('detail')}")
             continue
         s = open_savings(
             api,
             r["client_id"],
             int(product_id),
             correlation_id=corr,
+            trace_id=tid,
             deposit=deposit,
             payment_type_id=payment_type_id,
         )
         if not s.get("ok"):
             fail += 1
-            print(f"[bpm-onboard] savings FAIL corr={corr} {s.get('detail')}")
+            print(f"[bpm-onboard] savings FAIL corr={corr} trace={tid} {s.get('detail')}")
             # vẫn lưu client để seed/volume dùng sau
             clients.append(
                 {
@@ -73,6 +76,7 @@ def main() -> int:
                     "firstname": r.get("firstname"),
                     "lastname": r.get("lastname"),
                     "correlation_id": corr,
+                    "trace_id": tid,
                 }
             )
             continue
@@ -84,10 +88,14 @@ def main() -> int:
                 "firstname": r.get("firstname"),
                 "lastname": r.get("lastname"),
                 "correlation_id": corr,
+                "trace_id": tid,
             }
         )
         ok += 1
-        print(f"[bpm-onboard] ok client={r['client_id']} savings={s['savings_id']} corr={corr}")
+        print(
+            f"[bpm-onboard] ok client={r['client_id']} savings={s['savings_id']} "
+            f"corr={corr} trace={tid}"
+        )
         time.sleep(0.5)
 
     state["next_client_index"] = next_idx

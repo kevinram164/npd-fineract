@@ -106,6 +106,21 @@ def new_idempotency_key() -> str:
     return str(uuid.uuid4())
 
 
+def new_trace_id() -> str:
+    """W3C trace-id (32 hex) — Instana search bằng Trace ID (ổn định hơn tag corr)."""
+    return uuid.uuid4().hex
+
+
+def new_span_id() -> str:
+    return uuid.uuid4().hex[:16]
+
+
+def w3c_traceparent(trace_id: str, span_id: str | None = None) -> str:
+    tid = (trace_id or new_trace_id()).replace("-", "")[:32].ljust(32, "0")
+    sid = (span_id or new_span_id()).replace("-", "")[:16].ljust(16, "0")
+    return f"00-{tid}-{sid}-01"
+
+
 def load_json(path: Path, default: Any) -> Any:
     if not path.is_file():
         return default
@@ -158,16 +173,21 @@ class FineractClient:
         business_flow: str = "",
         business_step: str = "",
         correlation_id: str | None = None,
+        trace_id: str | None = None,
         idempotent: bool = False,
         timeout: int = 60,
     ) -> dict:
         corr = correlation_id or new_correlation_id()
+        tid = (trace_id or "").replace("-", "") or None
         headers = {
             "X-Correlation-ID": corr,
             "X-Business-Flow": business_flow,
         }
         if business_step:
             headers["X-Business-Step"] = business_step
+        if tid:
+            # OTel Java agent / Instana: mọi request cùng trace_id → 1 Trace trên UI
+            headers["traceparent"] = w3c_traceparent(tid)
         if idempotent or method.upper() in ("POST", "PUT"):
             headers["Idempotency-Key"] = new_idempotency_key()
 
@@ -182,7 +202,7 @@ class FineractClient:
                 timeout=timeout,
             )
         except Exception as e:
-            return {"ok": False, "correlation_id": corr, "detail": str(e), "status": 0}
+            return {"ok": False, "correlation_id": corr, "trace_id": tid, "detail": str(e), "status": 0}
 
         try:
             body = r.json() if r.content else {}
@@ -190,7 +210,7 @@ class FineractClient:
             body = {"raw": r.text[:500]}
 
         if 200 <= r.status_code < 300:
-            return {"ok": True, "correlation_id": corr, "status": r.status_code, "data": body}
+            return {"ok": True, "correlation_id": corr, "trace_id": tid, "status": r.status_code, "data": body}
 
         detail = body.get("defaultUserMessage") or body.get("message") or r.text[:300]
         if isinstance(body, dict) and body.get("errors"):
@@ -198,6 +218,7 @@ class FineractClient:
         return {
             "ok": False,
             "correlation_id": corr,
+            "trace_id": tid,
             "status": r.status_code,
             "detail": detail,
             "data": body,
@@ -334,11 +355,17 @@ def ensure_loan_product(api: FineractClient, currency: str) -> int:
     return int(r["data"]["resourceId"])
 
 
-def create_client_active(api: FineractClient, index: int, correlation_id: str | None = None) -> dict:
+def create_client_active(
+    api: FineractClient,
+    index: int,
+    correlation_id: str | None = None,
+    trace_id: str | None = None,
+) -> dict:
     first, last = random_vn_name(index)
     office_id = cfg_int("OFFICE_ID", 1)
     day = today_str()
     corr = correlation_id or new_correlation_id()
+    tid = trace_id or new_trace_id()
     body = {
         "officeId": office_id,
         # 1=Person, 2=Entity — bắt buộc trên bản Fineract lab này
@@ -360,11 +387,19 @@ def create_client_active(api: FineractClient, index: int, correlation_id: str | 
         business_flow="bpm.client.onboard",
         business_step="create",
         correlation_id=corr,
+        trace_id=tid,
     )
     if not r.get("ok"):
-        return r
+        return {**r, "trace_id": tid}
     client_id = int(r["data"].get("clientId") or r["data"]["resourceId"])
-    return {"ok": True, "correlation_id": corr, "client_id": client_id, "firstname": first, "lastname": last}
+    return {
+        "ok": True,
+        "correlation_id": corr,
+        "trace_id": tid,
+        "client_id": client_id,
+        "firstname": first,
+        "lastname": last,
+    }
 
 
 def open_savings(
@@ -373,11 +408,13 @@ def open_savings(
     product_id: int,
     *,
     correlation_id: str | None = None,
+    trace_id: str | None = None,
     deposit: float = 0,
     payment_type_id: int = 1,
 ) -> dict:
     day = today_str()
     corr = correlation_id or new_correlation_id()
+    tid = trace_id or new_trace_id()
     submit = api.post(
         "savingsaccounts",
         {
@@ -390,9 +427,10 @@ def open_savings(
         business_flow="bpm.client.onboard",
         business_step="savings.submit",
         correlation_id=corr,
+        trace_id=tid,
     )
     if not submit.get("ok"):
-        return submit
+        return {**submit, "trace_id": tid}
     savings_id = int(submit["data"]["savingsId"] if "savingsId" in submit["data"] else submit["data"]["resourceId"])
 
     approve = api.post(
@@ -402,9 +440,10 @@ def open_savings(
         business_flow="bpm.client.onboard",
         business_step="savings.approve",
         correlation_id=corr,
+        trace_id=tid,
     )
     if not approve.get("ok"):
-        return {**approve, "savings_id": savings_id}
+        return {**approve, "savings_id": savings_id, "trace_id": tid}
 
     activate = api.post(
         f"savingsaccounts/{savings_id}",
@@ -413,9 +452,10 @@ def open_savings(
         business_flow="bpm.client.onboard",
         business_step="savings.activate",
         correlation_id=corr,
+        trace_id=tid,
     )
     if not activate.get("ok"):
-        return {**activate, "savings_id": savings_id}
+        return {**activate, "savings_id": savings_id, "trace_id": tid}
 
     if deposit and deposit > 0:
         dep = api.post(
@@ -431,11 +471,12 @@ def open_savings(
             business_flow="bpm.client.onboard",
             business_step="savings.deposit",
             correlation_id=corr,
+            trace_id=tid,
         )
         if not dep.get("ok"):
-            return {**dep, "savings_id": savings_id}
+            return {**dep, "savings_id": savings_id, "trace_id": tid}
 
-    return {"ok": True, "correlation_id": corr, "savings_id": savings_id}
+    return {"ok": True, "correlation_id": corr, "trace_id": tid, "savings_id": savings_id}
 
 
 def savings_deposit(
@@ -527,9 +568,11 @@ def loan_originate(
     principal: float,
     *,
     correlation_id: str | None = None,
+    trace_id: str | None = None,
 ) -> dict:
     day = today_str()
     corr = correlation_id or new_correlation_id()
+    tid = trace_id or new_trace_id()
     apply = api.post(
         "loans",
         {
@@ -555,9 +598,10 @@ def loan_originate(
         business_flow="bpm.loan.origination",
         business_step="apply",
         correlation_id=corr,
+        trace_id=tid,
     )
     if not apply.get("ok"):
-        return apply
+        return {**apply, "trace_id": tid}
     loan_id = int(apply["data"]["loanId"] if "loanId" in apply["data"] else apply["data"]["resourceId"])
 
     approve = api.post(
@@ -573,9 +617,10 @@ def loan_originate(
         business_flow="bpm.loan.origination",
         business_step="approve",
         correlation_id=corr,
+        trace_id=tid,
     )
     if not approve.get("ok"):
-        return {**approve, "loan_id": loan_id}
+        return {**approve, "loan_id": loan_id, "trace_id": tid}
 
     disburse = api.post(
         f"loans/{loan_id}",
@@ -589,11 +634,12 @@ def loan_originate(
         business_flow="bpm.loan.origination",
         business_step="disburse",
         correlation_id=corr,
+        trace_id=tid,
     )
     if not disburse.get("ok"):
-        return {**disburse, "loan_id": loan_id}
+        return {**disburse, "loan_id": loan_id, "trace_id": tid}
 
-    return {"ok": True, "correlation_id": corr, "loan_id": loan_id}
+    return {"ok": True, "correlation_id": corr, "trace_id": tid, "loan_id": loan_id}
 
 
 def loan_repay(
@@ -603,8 +649,10 @@ def loan_repay(
     payment_type_id: int,
     *,
     correlation_id: str | None = None,
+    trace_id: str | None = None,
 ) -> dict:
-    return api.post(
+    tid = trace_id or new_trace_id()
+    r = api.post(
         f"loans/{loan_id}/transactions",
         {
             "transactionDate": today_str(),
@@ -617,7 +665,10 @@ def loan_repay(
         business_flow="bpm.loan.repay",
         business_step="repay",
         correlation_id=correlation_id,
+        trace_id=tid,
     )
+    r.setdefault("trace_id", tid)
+    return r
 
 
 def clients_with_savings(clients: list[dict] | None = None) -> list[dict]:
