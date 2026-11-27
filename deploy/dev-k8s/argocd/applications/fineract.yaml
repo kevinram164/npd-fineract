@@ -15,6 +15,7 @@ spec:
         valueFiles:
           - values-dev-k8s.yaml
           - $values/deploy/dev-k8s/values/values-images.yaml
+          - $values/deploy/dev-k8s/values/values-observability.yaml
     - repoURL: https://github.com/kevinram164/npd-fineract.git
       targetRevision: dev-k8s
       ref: values

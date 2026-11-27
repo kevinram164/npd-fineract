@@ -19,7 +19,9 @@ GitOps giống `banking-demo` / `npd-shop`. **Postgres = `postgres-ha` platform*
 | `fineract-server` | `fineract-provider/`, `fineract-core/`, … | Gradle + **DinD** (QueryDSL Testcontainers) → Kaniko đóng JAR (20–60 phút) |
 | `web-app` | `docker/web-app/` | Kaniko mirror `openmf/web-app` |
 
-**Lưu ý:** Không build Gradle *trong* Kaniko. Pod CI dùng sidecar `docker:27-dind` (privileged) + `postgres:17-alpine` cho QueryDSL (`QUERYDSL_JDBC_*`, không dùng Testcontainers).
+**Lưu ý:** Không build Gradle *trong* Kaniko. Pod CI dùng sidecar `docker:27-dind` (privileged) + `postgres:17-alpine` cho QueryDSL (`QUERYDSL_JDBC_*`).
+
+**Observability:** image có `/otel/opentelemetry-javaagent.jar`; Argo load `values-observability.yaml` → OTLP collector → Instana. Sau deploy mới: Instana Applications service `fineract-server`.
 
 ```bash
 # Force: BUILD_TARGET=fineract-server

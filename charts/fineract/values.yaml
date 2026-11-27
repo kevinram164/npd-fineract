@@ -33,8 +33,8 @@ fineract:
     FINERACT_DEFAULT_TENANTDB_NAME: fineract_default
     FINERACT_DEFAULT_TENANTDB_IDENTIFIER: default
     FINERACT_DEFAULT_TENANTDB_TIMEZONE: UTC
-    # develop image (Java 25 + Liquibase) cần heap lớn hơn lab tối thiểu
-    JAVA_TOOL_OPTIONS: "-Xmx1536m -XX:MaxMetaspaceSize=256m"
+    # OTel agent trong image (/otel/…); heap lab
+    JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xmx1536m -XX:MaxMetaspaceSize=256m"
   existingSecret: fineract-tenants-db-secret
 
 webapp:
