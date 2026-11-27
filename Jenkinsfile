@@ -201,11 +201,11 @@ spec:
               export QUERYDSL_JDBC_PASSWORD=test
 
               chmod +x ./gradlew
+              # KHÔNG -x buildJavaSdk: task đó generate Avro Java (BulkMessageItemV1, …)
               ./gradlew --no-daemon --console=plain --stacktrace \
                 :fineract-provider:bootJar \
                 -x test -x cucumber -x rat \
-                -x spotlessJava -x spotlessJavaCheck \
-                -x buildJavaSdk
+                -x spotlessJava -x spotlessJavaCheck
               JAR=$(ls fineract-provider/build/libs/fineract-provider*.jar | grep -v plain | head -1)
               cp "$JAR" docker/fineract-server/fineract-provider.jar
               ls -lh docker/fineract-server/fineract-provider.jar
