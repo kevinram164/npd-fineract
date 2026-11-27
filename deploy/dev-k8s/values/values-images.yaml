@@ -4,7 +4,7 @@
 fineract:
   image:
     repository: npd-harbor.co/npd-fineract/fineract-server
-    tag: "be9dfd5"
+    tag: "c013537"
     pullPolicy: Always
 
 webapp:
