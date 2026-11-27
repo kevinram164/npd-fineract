@@ -341,6 +341,8 @@ def create_client_active(api: FineractClient, index: int, correlation_id: str | 
     corr = correlation_id or new_correlation_id()
     body = {
         "officeId": office_id,
+        # 1=Person, 2=Entity — bắt buộc trên bản Fineract lab này
+        "legalFormId": cfg_int("CLIENT_LEGAL_FORM_ID", 1),
         "firstname": first,
         "lastname": last,
         "externalId": f"ECO-{index}-{uuid.uuid4().hex[:8]}",
