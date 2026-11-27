@@ -25,7 +25,7 @@ properties([
     choice(
       name: 'BUILD_TARGET',
       choices: com.platform.ChangeDetector.buildTargetChoices(cfg),
-      description: 'auto | all | fineract-server | web-app',
+      description: 'auto | all | fineract-server (UI = repo npd-fineract-web-ui)',
     ),
   ]),
 ])
@@ -224,11 +224,7 @@ spec:
         }
       }
 
-      if (targets.contains('web-app')) {
-        stage('Build web-app') {
-          com.platform.KanikoBuilder.buildAndPush(this, cfg, 'web-app')
-        }
-      }
+      // web-app: build từ repo npd-fineract-web-ui (không mirror ở đây)
 
       stage('Update GitOps') {
         com.platform.GitOpsUpdater.bumpImageTags(this, cfg, targets)
