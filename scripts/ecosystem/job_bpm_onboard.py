@@ -18,6 +18,7 @@ from common import (  # noqa: E402
     new_correlation_id,
     open_savings,
     save_clients,
+    save_state,
     setup_warnings,
 )
 
@@ -36,11 +37,16 @@ def main() -> int:
     count = cfg_int("BPM_ONBOARD_COUNT", 3)
     deposit = float(cfg_int("INITIAL_DEPOSIT", 5_000_000))
     clients = load_clients()
-    start_idx = max([c.get("external_index", 0) for c in clients] + [0]) + 1
+    # Watermark: clients.json + state — tránh kẹt idx 1000.. khi DB đã có mobile từ lần onboard trước
+    max_json = max([c.get("external_index", 0) for c in clients] + [0])
+    max_state = int(state.get("next_client_index") or 0)
+    start_idx = max(max_json + 1, max_state, 10_000)
     ok = fail = 0
+    next_idx = start_idx
 
     for n in range(count):
         idx = start_idx + n
+        next_idx = idx + 1
         corr = new_correlation_id()
         print(f"[bpm-onboard] start corr={corr} idx={idx}")
         r = create_client_active(api, idx, correlation_id=corr)
@@ -84,8 +90,10 @@ def main() -> int:
         print(f"[bpm-onboard] ok client={r['client_id']} savings={s['savings_id']} corr={corr}")
         time.sleep(0.5)
 
+    state["next_client_index"] = next_idx
+    save_state(state)
     save_clients(clients)
-    print(f"[bpm-onboard] summary ok={ok} fail={fail}")
+    print(f"[bpm-onboard] summary ok={ok} fail={fail} next_idx={next_idx}")
     return 0 if ok or fail == 0 else 1
 
 

@@ -351,7 +351,8 @@ def create_client_active(api: FineractClient, index: int, correlation_id: str | 
         "submittedOnDate": day,
         "dateFormat": DATE_FMT,
         "locale": LOCALE,
-        "mobileNo": f"09{20000000 + (index % 70000000):08d}"[:12],
+        # Không derive từ index — BPM onboard hay reuse idx khi clients.json lệch DB → duplicate mobileNo
+        "mobileNo": f"09{uuid.uuid4().int % 10**10:010d}"[:12],
     }
     r = api.post(
         "clients",
