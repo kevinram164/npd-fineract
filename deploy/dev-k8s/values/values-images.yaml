@@ -10,5 +10,5 @@ fineract:
 webapp:
   image:
     repository: npd-harbor.co/npd-fineract/web-app
-    tag: "be9dfd5"
+    tag: "1011880"
     pullPolicy: Always
