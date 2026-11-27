@@ -4,11 +4,11 @@
 fineract:
   image:
     repository: npd-harbor.co/npd-fineract/fineract-server
-    tag: "39ba248"
+    tag: "be9dfd5"
     pullPolicy: Always
 
 webapp:
   image:
     repository: npd-harbor.co/npd-fineract/web-app
-    tag: "39ba248"
+    tag: "be9dfd5"
     pullPolicy: Always
