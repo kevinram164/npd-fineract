@@ -33,7 +33,7 @@ fineract:
     FINERACT_DEFAULT_TENANTDB_NAME: fineract_default
     FINERACT_DEFAULT_TENANTDB_IDENTIFIER: default
     FINERACT_DEFAULT_TENANTDB_TIMEZONE: UTC
-    # OTel agent trong image (/otel/…); heap lab
+    # Image phải chứa từ Dockerfile có /otel/opentelemetry-javaagent.jar
     JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xmx1536m -XX:MaxMetaspaceSize=256m"
   existingSecret: fineract-tenants-db-secret
 
