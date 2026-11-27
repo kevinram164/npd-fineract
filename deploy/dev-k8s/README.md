@@ -19,11 +19,11 @@ GitOps giống `banking-demo` / `npd-shop`. **Postgres = `postgres-ha` platform*
 | `fineract-server` | `fineract-provider/`, `fineract-core/`, … | Gradle + **DinD** (QueryDSL Testcontainers) → Kaniko đóng JAR (20–60 phút) |
 | `web-app` | `docker/web-app/` | Kaniko mirror `openmf/web-app` |
 
-**Lưu ý:** Không build Gradle *trong* Kaniko. Pod CI dùng sidecar `docker:27-dind` (privileged). Cluster phải cho phép privileged containers.
+**Lưu ý:** Không build Gradle *trong* Kaniko. Pod CI dùng sidecar `docker:27-dind` (privileged) + `postgres:17-alpine` cho QueryDSL (`QUERYDSL_JDBC_*`, không dùng Testcontainers).
 
 ```bash
 # Force: BUILD_TARGET=fineract-server
-# Log OK: "DinD ready" → bootJar → Kaniko push
+# Log OK: "DinD ready" → "querydsl-pg ready" → bootJar → Kaniko push
 ```
 
 ## Bước 1–3

@@ -67,26 +67,65 @@ public abstract class QuerydslCodegenAction implements WorkAction<QuerydslCodege
     @Override
     public void execute() {
         var p = getParameters();
-        var image = DockerImageName.parse(p.getPostgresImage().get()).asCompatibleSubstituteFor("postgres");
-
-        try (var postgres = new PostgreSQLContainer<>(image)) {
-            postgres.start();
-
-            migrate(p, postgres);
-
-            try (var connection = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(),
-                    postgres.getPassword())) {
-                try (var statement = connection.createStatement()) {
-                    statement.execute("drop table if exists databasechangelog, databasechangeloglock");
+        // CI (DinD): set QUERYDSL_JDBC_* to skip Testcontainers — more reliable than TC over DOCKER_HOST.
+        var jdbcUrl = firstNonBlank(System.getenv("QUERYDSL_JDBC_URL"), System.getProperty("QUERYDSL_JDBC_URL"));
+        try {
+            if (jdbcUrl != null && !jdbcUrl.isBlank()) {
+                var user = firstNonBlank(System.getenv("QUERYDSL_JDBC_USER"), System.getProperty("QUERYDSL_JDBC_USER"),
+                        "test");
+                var pass = firstNonBlank(System.getenv("QUERYDSL_JDBC_PASSWORD"),
+                        System.getProperty("QUERYDSL_JDBC_PASSWORD"), "test");
+                migrate(p, jdbcUrl, user, pass);
+                try (var connection = DriverManager.getConnection(jdbcUrl, user, pass)) {
+                    dropLiquibaseTables(connection);
+                    export(p, connection);
                 }
-                export(p, connection);
+                return;
+            }
+
+            var image = DockerImageName.parse(p.getPostgresImage().get()).asCompatibleSubstituteFor("postgres");
+            try (var postgres = new PostgreSQLContainer<>(image)) {
+                postgres.start();
+                migrate(p, postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                try (var connection = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(),
+                        postgres.getPassword())) {
+                    dropLiquibaseTables(connection);
+                    export(p, connection);
+                }
             }
         } catch (Exception e) {
-            throw new IllegalStateException("QueryDSL SQL code generation failed", e);
+            throw new IllegalStateException("QueryDSL SQL code generation failed: " + rootMessage(e), e);
         }
     }
 
-    private static void migrate(Parameters p, PostgreSQLContainer<?> postgres) throws Exception {
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String v : values) {
+            if (v != null && !v.isBlank()) {
+                return v;
+            }
+        }
+        return null;
+    }
+
+    private static String rootMessage(Throwable e) {
+        Throwable cur = e;
+        while (cur.getCause() != null && cur.getCause() != cur) {
+            cur = cur.getCause();
+        }
+        var msg = cur.getMessage();
+        return msg != null ? msg : cur.getClass().getName();
+    }
+
+    private static void dropLiquibaseTables(Connection connection) throws Exception {
+        try (var statement = connection.createStatement()) {
+            statement.execute("drop table if exists databasechangelog, databasechangeloglock");
+        }
+    }
+
+    private static void migrate(Parameters p, String jdbcUrl, String username, String password) throws Exception {
         var accessors = new ArrayList<ResourceAccessor>();
 
         for (var root : p.getResourceRoots().getFiles()) {
@@ -104,9 +143,9 @@ public abstract class QuerydslCodegenAction implements WorkAction<QuerydslCodege
             Scope.child(Map.of(Scope.Attr.resourceAccessor.name(), resourceAccessor), () -> {
                 for (String contexts : runs) {
                     var update = new CommandScope("update")
-                            .addArgumentValue("url", postgres.getJdbcUrl())
-                            .addArgumentValue("username", postgres.getUsername())
-                            .addArgumentValue("password", postgres.getPassword())
+                            .addArgumentValue("url", jdbcUrl)
+                            .addArgumentValue("username", username)
+                            .addArgumentValue("password", password)
                             .addArgumentValue("changelogFile", p.getChangelogFile().get());
                     if (!contexts.isBlank()) {
                         update.addArgumentValue("contexts", contexts);

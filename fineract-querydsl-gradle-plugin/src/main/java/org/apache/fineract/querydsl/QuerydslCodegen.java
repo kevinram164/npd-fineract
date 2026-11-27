@@ -98,7 +98,18 @@ public abstract class QuerydslCodegen extends DefaultTask {
                 .processIsolation(spec -> {
                     spec.getClasspath().from(getCodegenClasspath());
                     // Liquibase reads changelog parameters from system properties
-                    spec.forkOptions(o -> o.systemProperties(getChangelogParameters().get()));
+                    spec.forkOptions(o -> {
+                        o.systemProperties(getChangelogParameters().get());
+                        // Forward CI JDBC / Docker env into the isolated worker JVM
+                        var env = System.getenv();
+                        for (String key : new String[] { "QUERYDSL_JDBC_URL", "QUERYDSL_JDBC_USER",
+                                "QUERYDSL_JDBC_PASSWORD", "DOCKER_HOST", "TESTCONTAINERS_HOST_OVERRIDE",
+                                "TESTCONTAINERS_RYUK_DISABLED" }) {
+                            if (env.containsKey(key) && env.get(key) != null) {
+                                o.environment(key, env.get(key));
+                            }
+                        }
+                    });
                 })
                 .submit(QuerydslCodegenAction.class, p -> {
                     p.getResourceRoots().from(getResourceRoots());

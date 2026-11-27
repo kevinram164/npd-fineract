@@ -154,7 +154,8 @@ spec:
           container('gradle') {
             sh '''
               set -e
-              # Docker CLI → DinD sidecar (QueryDSL Testcontainers)
+              export DEBIAN_FRONTEND=noninteractive
+              # Docker CLI → DinD sidecar
               if ! command -v docker >/dev/null 2>&1; then
                 apt-get update -qq
                 apt-get install -y -qq docker.io curl ca-certificates >/dev/null
@@ -172,8 +173,35 @@ spec:
                 sleep 2
               done
               docker version
+
+              # QueryDSL codegen: Postgres qua docker run + JDBC (bỏ Testcontainers — hay fail trên DinD)
+              docker rm -f querydsl-pg >/dev/null 2>&1 || true
+              docker pull postgres:17-alpine
+              docker run -d --name querydsl-pg \
+                -e POSTGRES_USER=test \
+                -e POSTGRES_PASSWORD=test \
+                -e POSTGRES_DB=test \
+                -p 54329:5432 \
+                postgres:17-alpine
+              echo "Waiting for querydsl-pg..."
+              for i in $(seq 1 60); do
+                if docker exec querydsl-pg pg_isready -U test -d test >/dev/null 2>&1; then
+                  echo "querydsl-pg ready"
+                  break
+                fi
+                if [ "$i" -eq 60 ]; then
+                  docker logs querydsl-pg || true
+                  echo "querydsl-pg not ready"
+                  exit 1
+                fi
+                sleep 2
+              done
+              export QUERYDSL_JDBC_URL='jdbc:postgresql://localhost:54329/test'
+              export QUERYDSL_JDBC_USER=test
+              export QUERYDSL_JDBC_PASSWORD=test
+
               chmod +x ./gradlew
-              ./gradlew --no-daemon --console=plain \
+              ./gradlew --no-daemon --console=plain --stacktrace \
                 :fineract-provider:bootJar \
                 -x test -x cucumber -x rat \
                 -x spotlessJava -x spotlessJavaCheck \
@@ -181,6 +209,7 @@ spec:
               JAR=$(ls fineract-provider/build/libs/fineract-provider*.jar | grep -v plain | head -1)
               cp "$JAR" docker/fineract-server/fineract-provider.jar
               ls -lh docker/fineract-server/fineract-provider.jar
+              docker rm -f querydsl-pg >/dev/null 2>&1 || true
             '''
           }
         }
