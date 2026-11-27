@@ -69,6 +69,38 @@ exit "\$rc"
 EOF
 chmod +x "${ROOT}/bin/run-job.sh"
 
+# Log: mỗi lần chạy 1 file timestamp → dọn file cũ (không dùng logrotate rename).
+# Giữ 7 ngày; chạy hàng ngày + có thể gọi tay: bin/cleanup-logs.sh
+LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-7}"
+cat > "${ROOT}/bin/cleanup-logs.sh" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+LOG_DIR="${ROOT}/logs"
+DAYS="${LOG_RETENTION_DAYS}"
+mkdir -p "\$LOG_DIR"
+# xóa *.log / *.log.gz cũ hơn DAYS ngày
+deleted=\$(find "\$LOG_DIR" -type f \\( -name '*.log' -o -name '*.log.gz' \\) -mtime +"\$DAYS" -print -delete | wc -l)
+echo "\$(date -Is) cleanup-logs: removed \$deleted file(s) older than \$DAYS days in \$LOG_DIR"
+EOF
+chmod +x "${ROOT}/bin/cleanup-logs.sh"
+
+# logrotate: nén file còn lại nếu ai đó đổi sang append cùng tên (phòng xa)
+LOGROTATE_FILE=/etc/logrotate.d/npd-fineract-ecosystem
+cat > "${LOGROTATE_FILE}" <<EOF
+${ROOT}/logs/*.log {
+    daily
+    rotate ${LOG_RETENTION_DAYS}
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    dateext
+    maxage ${LOG_RETENTION_DAYS}
+}
+EOF
+chmod 644 "${LOGROTATE_FILE}"
+
 if id "${RUN_USER}" &>/dev/null; then
   chown -R "${RUN_USER}:${RUN_USER}" "${ROOT}"
 fi
@@ -91,6 +123,9 @@ MAILTO=""
 
 # BPM loan originate + repay — mỗi 5 phút (lệch :02)
 2-57/5 * * * * ${RUN_USER} ${ROOT}/bin/run-job.sh bpm-loan
+
+# Xóa log cũ hơn ${LOG_RETENTION_DAYS} ngày (tránh đầy đĩa — volume tạo ~1 file/phút)
+30 3 * * * ${RUN_USER} ${ROOT}/bin/cleanup-logs.sh >${ROOT}/logs/cleanup-last.txt 2>&1
 EOF
 chmod 644 "${CRON_FILE}"
 
@@ -100,10 +135,15 @@ if command -v systemctl >/dev/null 2>&1; then
   systemctl start cron 2>/dev/null || systemctl start crond 2>/dev/null || true
 fi
 
+# Chạy cleanup một lần ngay (dọn sẵn nếu đã đầy)
+"${ROOT}/bin/cleanup-logs.sh" || true
+
 echo
 echo "==== crontab đã cài ===="
 cat "${CRON_FILE}"
 echo "========================"
+echo "logrotate: ${LOGROTATE_FILE} (rotate ${LOG_RETENTION_DAYS}d + maxage)"
+echo "cleanup:   ${ROOT}/bin/cleanup-logs.sh (cron 03:30 daily)"
 echo
 echo "OK. Tiếp theo:"
 echo "  1. vi ${ROOT}/.env"

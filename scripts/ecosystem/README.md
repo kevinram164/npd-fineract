@@ -41,6 +41,11 @@ vi /home/sysadmin/npd-fineract-ecosystem/.env
 Log job: `/home/sysadmin/npd-fineract-ecosystem/logs/<job>-<ts>.log`  
 State: `data/state.json`, `data/clients.json`
 
+**Log retention:** `install.sh` cài  
+- cron `cleanup-logs.sh` lúc 03:30 — **xóa `*.log` / `*.log.gz` > 7 ngày**  
+- `/etc/logrotate.d/npd-fineract-ecosystem` — daily rotate + `maxage 7`  
+Đổi số ngày: `LOG_RETENTION_DAYS=14 sudo bash install.sh`
+
 Chạy tay không qua wrapper (dev):
 
 ```bash
