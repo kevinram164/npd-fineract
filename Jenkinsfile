@@ -55,10 +55,10 @@ spec:
           value: ""
       resources:
         requests:
-          memory: "1Gi"
-          cpu: "200m"
+          memory: "256Mi"
+          cpu: "100m"
         limits:
-          memory: "4Gi"
+          memory: "2Gi"
           cpu: "2"
       volumeMounts:
         - name: dind-storage
@@ -77,7 +77,7 @@ spec:
           cpu: "4"
       env:
         - name: GRADLE_OPTS
-          value: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2 -Xmx4g"
+          value: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1 -Xmx4g"
         - name: DOCKER_HOST
           value: "tcp://localhost:2375"
         - name: TESTCONTAINERS_HOST_OVERRIDE
@@ -102,10 +102,10 @@ spec:
       tty: true
       resources:
         requests:
-          memory: "1Gi"
-          cpu: "200m"
+          memory: "256Mi"
+          cpu: "100m"
         limits:
-          memory: "4Gi"
+          memory: "2Gi"
           cpu: "2"
       env:
         - name: PATH
