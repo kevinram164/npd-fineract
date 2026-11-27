@@ -78,14 +78,20 @@ kubectl -n npd-fineract logs -l app.kubernetes.io/name=fineract-server --tail=50
 
 ### 3) Instana — Traces / Calls
 
-1. **Applications** → service `fineract-server`
-2. **Calls / Traces** — filter thời gian vừa chạy job
-3. Endpoint gợi ý:
+**Lưu ý:** ô **Trace ID** trên Instana (`1ffc128f…`) **không phải** `corr=` trong log bot.  
+`corr` = header `X-Correlation-ID` (sau khi bật capture header trên OTel agent).
+
+1. Log bot: copy full UUID sau `corr=`
+2. **Applications** → `fineract-server` → Calls / Traces
+3. Search / filter tag: `http.request.header.x_correlation_id` = `<uuid>`  
+   (hoặc free-text UUID nếu Instana index tag)
+4. Endpoint gợi ý:
    - V1: `/accounttransfers`
    - V2/V3: `/savingsaccounts/.../transactions`
    - B1: `/clients`, `/savingsaccounts`
    - B2: `/loans` (+ `?command=approve|disburse`)
    - B3: `/loans/.../transactions`
+5. Trong 1 call: panel phải **Tags** / HTTP headers — tìm `x_correlation_id` (không nhìn Trace ID)
 
 ### 4) Instana — Logs
 

@@ -13,6 +13,9 @@ observability:
     # Map X-Correlation-ID vào MDC log (ecosystem synthetic)
     FINERACT_LOGGING_HTTP_CORRELATION_ID_ENABLED: "true"
     FINERACT_LOGGING_HTTP_CORRELATION_ID_HEADER_NAME: "X-Correlation-ID"
+    # Instana: index header → tag span (search được corr / BPM flow trên Traces)
+    # Tag dạng: http.request.header.x_correlation_id , http.request.header.x_business_flow
+    OTEL_INSTRUMENTATION_HTTP_SERVER_CAPTURE_REQUEST_HEADERS: "X-Correlation-ID,X-Business-Flow,X-Business-Step"
     # Grafana p95: Micrometer histogram cho http.server.requests
     FINERACT_MANAGEMENT_PROMETHEUS_ENABLED: "true"
     FINERACT_MANAGEMENT_ENDPOINT_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
