@@ -20,8 +20,8 @@ fineract:
     port: "5432"
   resources:
     requests:
-      cpu: 200m
-      memory: 1536Mi
+      cpu: 250m
+      memory: 2Gi
     limits:
       cpu: "2"
       memory: 3Gi
@@ -33,8 +33,9 @@ fineract:
     FINERACT_DEFAULT_TENANTDB_NAME: fineract_default
     FINERACT_DEFAULT_TENANTDB_IDENTIFIER: default
     FINERACT_DEFAULT_TENANTDB_TIMEZONE: UTC
-    # Image phải chứa từ Dockerfile có /otel/opentelemetry-javaagent.jar
-    JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xmx1536m -XX:MaxMetaspaceSize=256m"
+    # OTel agent + Jersey/Hibernate ăn Metaspace; 256m OOM dưới synthetic volume.
+    # Budget ~3Gi: heap 1536 + metaspace 512 + native/direct/agent ≈ fit limit.
+    JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Xmx1536m -XX:MaxMetaspaceSize=512m -XX:MetaspaceSize=256m"
   existingSecret: fineract-tenants-db-secret
 
 webapp:
