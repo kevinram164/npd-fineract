@@ -35,8 +35,26 @@ public class RequestResponseFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        final long started = System.currentTimeMillis();
         log.debug("Received request: [{}], [{}]", request.getMethod(), request.getRequestURI());
-        filterChain.doFilter(request, response);
-        log.debug("Sent response: [{}] for [{}], [{}]", response.getStatus(), request.getMethod(), request.getRequestURI());
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            // INFO: một dòng / request API → stdout có %X{correlationId} + %X{trace_id} (OTel MDC / script
+            // traceparent). Pattern console in MDC; kubectl/Instana Logs soi cùng Trace ID với bot `trace=`.
+            if (shouldLogAccess(request)) {
+                log.info("HTTP {} {} status={} durationMs={} flow={}", request.getMethod(), request.getRequestURI(),
+                        response.getStatus(), System.currentTimeMillis() - started, request.getHeader("X-Business-Flow"));
+            }
+            log.debug("Sent response: [{}] for [{}], [{}]", response.getStatus(), request.getMethod(), request.getRequestURI());
+        }
+    }
+
+    private static boolean shouldLogAccess(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (path == null) {
+            return false;
+        }
+        return !(path.contains("/actuator") || path.contains("/prometheus") || path.endsWith("/health"));
     }
 }
